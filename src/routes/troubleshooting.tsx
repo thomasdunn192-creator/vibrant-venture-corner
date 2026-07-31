@@ -1,0 +1,473 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import {
+  Send,
+  Bot,
+  User,
+  Sparkles,
+  Thermometer,
+  Layers,
+  Move,
+  Droplets,
+  CircleDot,
+  Paintbrush,
+  AlertTriangle,
+  Grid3X3,
+} from "lucide-react";
+
+import { AppShell } from "@/components/app-shell";
+import { PrinterSelector } from "@/components/printer-selector";
+import { useAppSettingsContext } from "@/components/app-settings-provider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { useServerFn } from "@tanstack/react-start";
+import { chatWithAssistant } from "@/lib/ai.functions";
+import { getPrinterById } from "@/lib/printers";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/troubleshooting")({
+  component: TroubleshootingPage,
+  head: () => ({
+    meta: [
+      { title: "Troubleshooting & AI Chat — PrintOps" },
+      {
+        name: "description",
+        content:
+          "Common 3D printing symptoms and fixes, plus an AI assistant that knows your printer and current settings.",
+      },
+      { property: "og:title", content: "Troubleshooting & AI Chat — PrintOps" },
+      {
+        property: "og:description",
+        content:
+          "Common 3D printing symptoms and fixes, plus an AI assistant that knows your printer and current settings.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+});
+
+interface TroubleshootingTopic {
+  icon: React.ComponentType<{ className?: string }>;
+  symptom: string;
+  causes: string[];
+  fixes: string[];
+}
+
+const TOPICS: TroubleshootingTopic[] = [
+  {
+    icon: Grid3X3,
+    symptom: "Adhesion problems",
+    causes: [
+      "Bed not clean or greasy",
+      "Nozzle too far from bed",
+      "Bed temperature too low for material",
+      "Drafts cooling the first layer",
+    ],
+    fixes: [
+      "Clean bed with isopropyl alcohol and re-level",
+      "Raise bed temp 5–10°C for the filament",
+      "Use brim or raft for small parts",
+      "Disable fans for the first 3 layers",
+    ],
+  },
+  {
+    icon: Droplets,
+    symptom: "Stringing / oozing",
+    causes: [
+      "Retraction distance too low",
+      "Retraction speed too slow",
+      "Nozzle temp too high",
+      "Travel speed too slow",
+    ],
+    fixes: [
+      "Increase retraction distance in 0.2mm steps",
+      "Increase retraction speed in 5–10mm/s steps",
+      "Lower nozzle temp by 5°C",
+      "Raise travel speed to 150–200mm/s",
+    ],
+  },
+  {
+    icon: Move,
+    symptom: "Layer shifting",
+    causes: [
+      "Loose belts",
+      "Pulley grub screws loose",
+      "Acceleration/jerk too high",
+      "Mechanical obstruction or binding",
+    ],
+    fixes: [
+      "Tension belts until they twang like a low guitar note",
+      "Check and tighten all pulley grub screws",
+      "Lower acceleration and jerk in slicer",
+      "Inspect rails and wheels for debris or flat spots",
+    ],
+  },
+  {
+    icon: Thermometer,
+    symptom: "Under-extrusion / clogs",
+    causes: [
+      "Partial clog in nozzle",
+      "Insufficient nozzle temp",
+      "Worn or cracked PTFE tube",
+      "Filament diameter inconsistent",
+    ],
+    fixes: [
+      "Cold-pull or nozzle clean at working temp",
+      "Raise nozzle temp 5–10°C",
+      "Replace PTFE tube if it has browned or cracked",
+      "Measure filament diameter and set average in slicer",
+    ],
+  },
+  {
+    icon: CircleDot,
+    symptom: "Over-extrusion / blobbing",
+    causes: [
+      "Flow rate too high",
+      "Nozzle too close to bed",
+      "Nozzle temp too high",
+      "Bad retraction settings",
+    ],
+    fixes: [
+      "Reduce flow/extrusion multiplier in 2% steps",
+      "Re-tram bed and increase first-layer gap",
+      "Lower nozzle temp 5°C",
+      "Tune retraction distance and speed",
+    ],
+  },
+  {
+    icon: Paintbrush,
+    symptom: "Poor surface finish / ringing",
+    causes: [
+      "Belt resonance / loose frame",
+      "Acceleration too high",
+      "Mechanical vibration",
+      "Dampeners worn out",
+    ],
+    fixes: [
+      "Lower acceleration and jerk",
+      "Tighten frame bolts and belts",
+      "Move printer to a stiffer surface",
+      "Enable input shaping if firmware supports it",
+    ],
+  },
+  {
+    icon: AlertTriangle,
+    symptom: "Nozzle / hotend leaks",
+    causes: [
+      "Nozzle not tight against heatbreak",
+      "Damaged or missing nozzle seal",
+      "Hotend assembled at wrong temp",
+    ],
+    fixes: [
+      "Hot-tighten nozzle at 240–260°C",
+      "Inspect PTFE and heatbreak mating surface",
+      "Replace nozzle if deformed or damaged",
+    ],
+  },
+  {
+    icon: Grid3X3,
+    symptom: "Bed leveling drift",
+    causes: [
+      "Bed screws loosening",
+      "Thermal expansion",
+      "Probe inconsistent",
+      "Build plate warped",
+    ],
+    fixes: [
+      "Re-tram bed and use nyloc nuts if needed",
+      "Heat soak bed for 5–10 minutes before probing",
+      "Clean probe tip and check magnet contacts",
+      "Replace warped build plate",
+    ],
+  },
+  {
+    icon: Layers,
+    symptom: "Dual-extruder issues (Ultra One)",
+    causes: [
+      "Nozzle offset drift",
+      "One extruder not priming",
+      "Purge tower too small",
+      "Material loaded incorrectly",
+    ],
+    fixes: [
+      "Re-measure nozzle X/Y/Z offset with calibration print",
+      "Prime each extruder individually before starting print",
+      "Increase purge tower volume and prime pillar",
+      "Verify extruder drive gear tension and filament path",
+    ],
+  },
+  {
+    icon: Thermometer,
+    symptom: "Enclosure / chamber issues (P1S, Core One)",
+    causes: [
+      "PLA overheating in chamber",
+      "Chamber temp not reaching target",
+      "Aux fan not running",
+      "Door seal leaking",
+    ],
+    fixes: [
+      "Open door/panels for PLA and keep chamber temp low",
+      "Verify chamber heater and door seal for ABS/ASA/Nylon",
+      "Check aux fan wiring and slicer settings",
+      "Replace worn door gaskets",
+    ],
+  },
+];
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+function ChatPanel({ topicPrefill }: { topicPrefill: string | undefined }) {
+  const { settings } = useAppSettingsContext();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState(topicPrefill ?? "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const chat = useServerFn(chatWithAssistant);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    const userText = input.trim();
+    setInput("");
+    setError(null);
+    setMessages((prev) => [...prev, { role: "user", content: userText }]);
+    setLoading(true);
+
+    try {
+      const profile = settings.profiles[settings.selectedPrinterId][settings.selectedFilamentType];
+      const result = await chat({
+        data: {
+          printerId: settings.selectedPrinterId,
+          filamentType: settings.selectedFilamentType,
+          profile: {
+            nozzleTempC: { current: profile.nozzleTempC.current },
+            bedTempC: { current: profile.bedTempC.current },
+            printSpeedMmS: { current: profile.printSpeedMmS.current },
+            fanSpeedPercent: { current: profile.fanSpeedPercent.current },
+            retractionDistanceMm: { current: profile.retractionDistanceMm.current },
+            retractionSpeedMmS: { current: profile.retractionSpeedMmS.current },
+            chamberTempC: {
+              applicable: profile.chamberTempC.applicable,
+              current: profile.chamberTempC.current,
+            },
+          },
+          messages: [{ role: "user", content: userText }],
+          topic: userText,
+        },
+      });
+      setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="flex h-[600px] flex-col">
+      <CardHeader className="border-b border-border pb-4">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Bot className="h-5 w-5 text-primary" />
+          AI Assistant
+        </CardTitle>
+        <CardDescription>
+          Context: {getPrinterById(settings.selectedPrinterId).shortName} ·{" "}
+          {settings.selectedFilamentType}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col overflow-hidden p-4">
+        <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+          {messages.length === 0 && (
+            <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+              Ask me about any symptom, setting, or 3D printing question. I already know your
+              selected printer and filament.
+            </div>
+          )}
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={cn(
+                "flex gap-2",
+                msg.role === "assistant" ? "flex-row" : "flex-row-reverse",
+              )}
+            >
+              <div
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                  msg.role === "assistant" ? "bg-primary/10 text-primary" : "bg-muted text-foreground",
+                )}
+              >
+                {msg.role === "assistant" ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
+              </div>
+              <div
+                className={cn(
+                  "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
+                  msg.role === "assistant"
+                    ? "rounded-tl-none bg-muted text-foreground"
+                    : "rounded-tr-none bg-primary text-primary-foreground",
+                )}
+              >
+                <FormattedMessage text={msg.content} markdown={msg.role === "assistant"} />
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Bot className="h-4 w-4" />
+              </div>
+              <div className="rounded-2xl rounded-tl-none bg-muted px-4 py-2 text-sm text-muted-foreground">
+                Thinking…
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <Input
+            placeholder="e.g. Why is my first layer not sticking?"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            className="flex-1"
+          />
+          <Button onClick={handleSend} disabled={loading || !input.trim()} aria-label="Send message">
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FormattedMessage({ text, markdown }: { text: string; markdown?: boolean }) {
+  if (markdown) {
+    return (
+      <div className="text-sm leading-relaxed text-foreground">
+        <ReactMarkdown
+          components={{
+            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+            ul: ({ children }) => <ul className="mb-2 list-disc pl-4 last:mb-0">{children}</ul>,
+            ol: ({ children }) => <ol className="mb-2 list-decimal pl-4 last:mb-0">{children}</ol>,
+            li: ({ children }) => <li className="mb-0.5">{children}</li>,
+            strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+            em: ({ children }) => <em className="italic">{children}</em>,
+            code: ({ children }) => <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{children}</code>,
+          }}
+        >
+          {text}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+  return <p className="whitespace-pre-wrap">{text}</p>;
+}
+
+function TroubleshootingPage() {
+  const { settings, setSelectedPrinterId } = useAppSettingsContext();
+  const [chatTopic, setChatTopic] = useState<string | undefined>(undefined);
+
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Troubleshooting
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Browse symptoms, or ask the AI for personalized help.
+            </p>
+          </div>
+          <PrinterSelector
+            value={settings.selectedPrinterId}
+            onChange={setSelectedPrinterId}
+            className="w-44"
+          />
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-6">
+            <Accordion type="single" collapsible className="w-full">
+              {TOPICS.map((topic) => {
+                const Icon = topic.icon;
+                return (
+                  <AccordionItem key={topic.symptom} value={topic.symptom}>
+                    <AccordionTrigger className="text-left hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <span className="font-medium text-foreground">{topic.symptom}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div>
+                        <h4 className="mb-1 text-sm font-semibold text-foreground">Likely causes</h4>
+                        <ul className="list-disc space-y-0.5 pl-5 text-sm text-muted-foreground">
+                          {topic.causes.map((cause, i) => (
+                            <li key={i}>{cause}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="mb-1 text-sm font-semibold text-foreground">Fix steps</h4>
+                        <ol className="list-decimal space-y-0.5 pl-5 text-sm text-muted-foreground">
+                          {topic.fixes.map((fix, i) => (
+                            <li key={i}>{fix}</li>
+                          ))}
+                        </ol>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setChatTopic(`I'm having ${topic.symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}.`)
+                        }
+                      >
+                        <Sparkles className="mr-1.5 h-4 w-4" />
+                        Ask the AI about this
+                      </Button>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          </div>
+
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <ChatPanel topicPrefill={chatTopic} />
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
