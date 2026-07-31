@@ -244,6 +244,12 @@ function ChatPanel({ topicPrefill }: { topicPrefill: string | undefined }) {
   const chat = useServerFn(chatWithAssistant);
 
   useEffect(() => {
+    if (topicPrefill) {
+      setInput(topicPrefill);
+    }
+  }, [topicPrefill]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
