@@ -426,7 +426,24 @@ function FormattedMessage({ text, markdown }: { text: string; markdown?: boolean
 
 function TroubleshootingPage() {
   const { settings, setSelectedPrinterId } = useAppSettingsContext();
-  const [chatTopic, setChatTopic] = useState<string | undefined>(undefined);
+  const [pending, setPending] = useState<PendingMessage | null>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const track = useTrackEvent();
+
+  const askAi = (symptom: string) => {
+    const text = `I'm having ${symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}. What should I check and fix?`;
+    setPending({ text, nonce: Date.now() });
+    track({
+      eventName: "ask_ai_pressed",
+      printerId: settings.selectedPrinterId,
+      filamentType: settings.selectedFilamentType,
+      detail: { topic: symptom },
+    });
+    requestAnimationFrame(() => {
+      chatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
 
   return (
     <AppShell>
