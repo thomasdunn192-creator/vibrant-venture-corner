@@ -98,6 +98,7 @@ function NumberField({ label, value, defaultValue, unit, warning, onChange }: Nu
   );
 }
 
+function FilamentPage() {
   const {
     settings,
     setSelectedPrinterId,
@@ -106,14 +107,41 @@ function NumberField({ label, value, defaultValue, unit, warning, onChange }: Nu
     resetProfile,
     resetAllProfilesForPrinter,
   } = useAppSettingsContext();
+  const track = useTrackEvent();
 
   const printer = getPrinterById(settings.selectedPrinterId);
   const filament = settings.selectedFilamentType;
   const profile = settings.profiles[settings.selectedPrinterId][filament];
+  const capabilityWarnings = getFilamentCapabilityWarnings(
+    settings.selectedPrinterId,
+    filament,
+    profile,
+  );
+  const nozzleWarning = getTempOverrideWarning(
+    settings.selectedPrinterId,
+    "nozzle",
+    profile.nozzleTempC.current,
+  );
+  const bedWarning = getTempOverrideWarning(
+    settings.selectedPrinterId,
+    "bed",
+    profile.bedTempC.current,
+  );
 
   const patch = (partial: Partial<FilamentProfile>) => {
     updateProfile(settings.selectedPrinterId, filament, partial);
   };
+
+  const handleFilamentChange = (value: FilamentType) => {
+    setSelectedFilamentType(value);
+    track({
+      eventName: "filament_selected",
+      printerId: settings.selectedPrinterId,
+      filamentType: value,
+    });
+  };
+
+
 
   return (
     <AppShell>
