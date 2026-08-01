@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as FilamentRouteImport } from './routes/filament'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as TroubleshootingRouteImport } from './routes/troubleshooting'
@@ -17,6 +18,11 @@ import { Route as TroubleshootingRouteImport } from './routes/troubleshooting'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FilamentRoute = FilamentRouteImport.update({
@@ -37,12 +43,14 @@ const TroubleshootingRoute = TroubleshootingRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/filament': typeof FilamentRoute
   '/setup': typeof SetupRoute
   '/troubleshooting': typeof TroubleshootingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/filament': typeof FilamentRoute
   '/setup': typeof SetupRoute
   '/troubleshooting': typeof TroubleshootingRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/filament': typeof FilamentRoute
   '/setup': typeof SetupRoute
   '/troubleshooting': typeof TroubleshootingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/filament' | '/setup' | '/troubleshooting'
+  fullPaths: '/' | '/auth' | '/filament' | '/setup' | '/troubleshooting'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/filament' | '/setup' | '/troubleshooting'
-  id: '__root__' | '/' | '/filament' | '/setup' | '/troubleshooting'
+  to: '/' | '/auth' | '/filament' | '/setup' | '/troubleshooting'
+  id: '__root__' | '/' | '/auth' | '/filament' | '/setup' | '/troubleshooting'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   FilamentRoute: typeof FilamentRoute
   SetupRoute: typeof SetupRoute
   TroubleshootingRoute: typeof TroubleshootingRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/filament': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   FilamentRoute: FilamentRoute,
   SetupRoute: SetupRoute,
   TroubleshootingRoute: TroubleshootingRoute,
