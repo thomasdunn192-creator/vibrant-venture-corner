@@ -37,6 +37,7 @@ import {
 import { useServerFn } from "@tanstack/react-start";
 import { chatWithAssistant } from "@/lib/ai.functions";
 import { getPrinterById } from "@/lib/printers";
+import { useTrackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/troubleshooting")({
