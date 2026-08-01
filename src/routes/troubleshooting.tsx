@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import {
   Send,
@@ -37,6 +37,7 @@ import {
 import { useServerFn } from "@tanstack/react-start";
 import { chatWithAssistant } from "@/lib/ai.functions";
 import { getPrinterById } from "@/lib/printers";
+import { useTrackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/troubleshooting")({
@@ -234,62 +235,88 @@ interface ChatMessage {
   content: string;
 }
 
-function ChatPanel({ topicPrefill }: { topicPrefill: string | undefined }) {
+interface PendingMessage {
+  text: string;
+  nonce: number;
+}
+
+function ChatPanel({ pending }: { pending: PendingMessage | null }) {
   const { settings } = useAppSettingsContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState(topicPrefill ?? "");
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const chat = useServerFn(chatWithAssistant);
-
-  useEffect(() => {
-    if (topicPrefill) {
-      setInput(topicPrefill);
-    }
-  }, [topicPrefill]);
+  const track = useTrackEvent();
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const lastNonce = useRef<number | null>(null);
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
-    const userText = input.trim();
-    setInput("");
-    setError(null);
-    setMessages((prev) => [...prev, { role: "user", content: userText }]);
-    setLoading(true);
-
-    try {
-      const profile = settings.profiles[settings.selectedPrinterId][settings.selectedFilamentType];
-      const result = await chat({
-        data: {
-          printerId: settings.selectedPrinterId,
-          filamentType: settings.selectedFilamentType,
-          profile: {
-            nozzleTempC: { current: profile.nozzleTempC.current },
-            bedTempC: { current: profile.bedTempC.current },
-            printSpeedMmS: { current: profile.printSpeedMmS.current },
-            fanSpeedPercent: { current: profile.fanSpeedPercent.current },
-            retractionDistanceMm: { current: profile.retractionDistanceMm.current },
-            retractionSpeedMmS: { current: profile.retractionSpeedMmS.current },
-            chamberTempC: {
-              applicable: profile.chamberTempC.applicable,
-              current: profile.chamberTempC.current,
-            },
-          },
-          messages: [{ role: "user", content: userText }],
-          topic: userText,
-        },
+  const send = useCallback(
+    async (userText: string) => {
+      if (!userText.trim() || sendingRef.current) return;
+      sendingRef.current = true;
+      const current = settingsRef.current;
+      setInput("");
+      setError(null);
+      setMessages((prev) => [...prev, { role: "user", content: userText }]);
+      setLoading(true);
+      track({
+        eventName: "chat_message_sent",
+        printerId: current.selectedPrinterId,
+        filamentType: current.selectedFilamentType,
       });
-      setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+
+      try {
+        const profile = current.profiles[current.selectedPrinterId][current.selectedFilamentType];
+        const result = await chat({
+          data: {
+            printerId: current.selectedPrinterId,
+            filamentType: current.selectedFilamentType,
+            profile: {
+              nozzleTempC: { current: profile.nozzleTempC.current },
+              bedTempC: { current: profile.bedTempC.current },
+              printSpeedMmS: { current: profile.printSpeedMmS.current },
+              fanSpeedPercent: { current: profile.fanSpeedPercent.current },
+              retractionDistanceMm: { current: profile.retractionDistanceMm.current },
+              retractionSpeedMmS: { current: profile.retractionSpeedMmS.current },
+              chamberTempC: {
+                applicable: profile.chamberTempC.applicable,
+                current: profile.chamberTempC.current,
+              },
+            },
+            messages: [{ role: "user", content: userText }],
+            topic: userText,
+          },
+        });
+        setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+      } finally {
+        setLoading(false);
+        sendingRef.current = false;
+      }
+    },
+    [chat, track],
+  );
+
+  useEffect(() => {
+    if (!pending) return;
+    if (lastNonce.current === pending.nonce) return;
+    lastNonce.current = pending.nonce;
+    void send(pending.text);
+  }, [pending, send]);
+
+  const handleSend = () => {
+    void send(input.trim());
   };
+
 
   return (
     <Card className="flex h-[600px] flex-col">
@@ -399,7 +426,24 @@ function FormattedMessage({ text, markdown }: { text: string; markdown?: boolean
 
 function TroubleshootingPage() {
   const { settings, setSelectedPrinterId } = useAppSettingsContext();
-  const [chatTopic, setChatTopic] = useState<string | undefined>(undefined);
+  const [pending, setPending] = useState<PendingMessage | null>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const track = useTrackEvent();
+
+  const askAi = (symptom: string) => {
+    const text = `I'm having ${symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}. What should I check and fix?`;
+    setPending({ text, nonce: Date.now() });
+    track({
+      eventName: "ask_ai_pressed",
+      printerId: settings.selectedPrinterId,
+      filamentType: settings.selectedFilamentType,
+      detail: { topic: symptom },
+    });
+    requestAnimationFrame(() => {
+      chatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
 
   return (
     <AppShell>
@@ -455,9 +499,7 @@ function TroubleshootingPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          setChatTopic(`I'm having ${topic.symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}.`)
-                        }
+                        onClick={() => askAi(topic.symptom)}
                       >
                         <Sparkles className="mr-1.5 h-4 w-4" />
                         Ask the AI about this
@@ -469,9 +511,10 @@ function TroubleshootingPage() {
             </Accordion>
           </div>
 
-          <div className="lg:sticky lg:top-24 lg:self-start">
-            <ChatPanel topicPrefill={chatTopic} />
+          <div ref={chatRef} className="lg:sticky lg:top-24 lg:self-start">
+            <ChatPanel pending={pending} />
           </div>
+
         </div>
       </div>
     </AppShell>

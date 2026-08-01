@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RotateCcw, MoreHorizontal } from "lucide-react";
+import { RotateCcw, MoreHorizontal, AlertTriangle, ShieldAlert } from "lucide-react";
+
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -24,7 +25,10 @@ import { PrinterSelector } from "@/components/printer-selector";
 import { useAppSettingsContext } from "@/components/app-settings-provider";
 import { FILAMENT_TYPES, type FilamentType, type FilamentProfile, isModified } from "@/lib/filaments";
 import { getPrinterById } from "@/lib/printers";
+import { getFilamentCapabilityWarnings, getTempOverrideWarning } from "@/lib/compatibility";
+import { useTrackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/filament")({
   component: FilamentPage,
@@ -53,10 +57,11 @@ interface NumberFieldProps {
   value: number;
   defaultValue: number;
   unit: string;
+  warning?: string | null;
   onChange: (value: number) => void;
 }
 
-function NumberField({ label, value, defaultValue, unit, onChange }: NumberFieldProps) {
+function NumberField({ label, value, defaultValue, unit, warning, onChange }: NumberFieldProps) {
   const modified = value !== defaultValue;
   return (
     <div className="space-y-1.5">
@@ -76,12 +81,19 @@ function NumberField({ label, value, defaultValue, unit, onChange }: NumberField
           className={cn(
             "pr-10",
             modified && "border-primary/50 ring-1 ring-primary/20",
+            warning && "border-destructive/60 ring-1 ring-destructive/20",
           )}
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
           {unit}
         </span>
       </div>
+      {warning && (
+        <p className="flex items-start gap-1.5 text-xs text-destructive">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {warning}
+        </p>
+      )}
     </div>
   );
 }
@@ -95,14 +107,41 @@ function FilamentPage() {
     resetProfile,
     resetAllProfilesForPrinter,
   } = useAppSettingsContext();
+  const track = useTrackEvent();
 
   const printer = getPrinterById(settings.selectedPrinterId);
   const filament = settings.selectedFilamentType;
   const profile = settings.profiles[settings.selectedPrinterId][filament];
+  const capabilityWarnings = getFilamentCapabilityWarnings(
+    settings.selectedPrinterId,
+    filament,
+    profile,
+  );
+  const nozzleWarning = getTempOverrideWarning(
+    settings.selectedPrinterId,
+    "nozzle",
+    profile.nozzleTempC.current,
+  );
+  const bedWarning = getTempOverrideWarning(
+    settings.selectedPrinterId,
+    "bed",
+    profile.bedTempC.current,
+  );
 
   const patch = (partial: Partial<FilamentProfile>) => {
     updateProfile(settings.selectedPrinterId, filament, partial);
   };
+
+  const handleFilamentChange = (value: FilamentType) => {
+    setSelectedFilamentType(value);
+    track({
+      eventName: "filament_selected",
+      printerId: settings.selectedPrinterId,
+      filamentType: value,
+    });
+  };
+
+
 
   return (
     <AppShell>
@@ -124,7 +163,7 @@ function FilamentPage() {
             />
             <Select
               value={filament}
-              onValueChange={(v) => setSelectedFilamentType(v as FilamentType)}
+              onValueChange={(v) => handleFilamentChange(v as FilamentType)}
             >
               <SelectTrigger className="w-32" aria-label="Select filament">
                 <SelectValue />
@@ -139,6 +178,44 @@ function FilamentPage() {
             </Select>
           </div>
         </div>
+
+        <div className="mb-6 rounded-lg border border-border bg-muted/40 px-4 py-3">
+          <div className="flex items-start gap-2">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Stay inside your printer's limits.</span>{" "}
+              We recommend against running filaments that exceed what the {printer.shortName} is
+              rated for — hotend up to {printer.maxNozzleTemp}°C, bed up to {printer.maxBedTemp}°C
+              {printer.hasEnclosure || printer.hasHeatedChamber ? ", enclosed chamber" : ", open frame"}.
+              Pushing past those ratings risks damaging the hotend, bed, or wiring and usually gives
+              warped, weak parts. If a material needs more than your machine offers, pick a
+              lower-temperature filament instead.
+            </p>
+          </div>
+        </div>
+
+        {capabilityWarnings.length > 0 && (
+          <div className="mb-6 space-y-2">
+            {capabilityWarnings.map((warning, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex items-start gap-2 rounded-lg border px-4 py-3 text-sm",
+                  warning.level === "danger"
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                    : "border-primary/30 bg-primary/5 text-foreground",
+                )}
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  <span className="font-medium">Not recommended: </span>
+                  {warning.message}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
 
         <Card>
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -189,6 +266,7 @@ function FilamentPage() {
                 value={profile.nozzleTempC.current}
                 defaultValue={profile.nozzleTempC.default}
                 unit="°C"
+                warning={nozzleWarning}
                 onChange={(v) => patch({ nozzleTempC: { ...profile.nozzleTempC, current: v } })}
               />
               <NumberField
@@ -196,8 +274,10 @@ function FilamentPage() {
                 value={profile.bedTempC.current}
                 defaultValue={profile.bedTempC.default}
                 unit="°C"
+                warning={bedWarning}
                 onChange={(v) => patch({ bedTempC: { ...profile.bedTempC, current: v } })}
               />
+
               <NumberField
                 label="Print speed"
                 value={profile.printSpeedMmS.current}

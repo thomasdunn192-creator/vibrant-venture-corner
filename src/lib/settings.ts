@@ -8,7 +8,6 @@ export interface AppSettings {
   selectedPrinterId: PrinterId;
   selectedFilamentType: FilamentType;
   profiles: Record<PrinterId, Record<FilamentType, FilamentProfile>>;
-  adsEnabled: boolean;
   setupProgress: Record<PrinterId, boolean[]>;
 }
 
@@ -24,7 +23,6 @@ export function createDefaultSettings(): AppSettings {
       "creality-ender-3": getAllDefaultProfiles("creality-ender-3"),
       "creality-ender-5": getAllDefaultProfiles("creality-ender-5"),
     },
-    adsEnabled: true,
     setupProgress: {
       "makergear-ultra-one": Array(10).fill(false),
       "bambu-p1s": Array(7).fill(false),
@@ -85,10 +83,6 @@ export function useAppSettings() {
     setSettingsState((prev) => ({ ...prev, selectedFilamentType: type }));
   }, []);
 
-  const setAdsEnabled = useCallback((enabled: boolean) => {
-    setSettingsState((prev) => ({ ...prev, adsEnabled: enabled }));
-  }, []);
-
   const updateProfile = useCallback((printerId: PrinterId, type: FilamentType, patch: Partial<FilamentProfile>) => {
     setSettingsState((prev) => {
       const next = { ...prev };
@@ -135,7 +129,6 @@ export function useAppSettings() {
     setSettings,
     setSelectedPrinterId,
     setSelectedFilamentType,
-    setAdsEnabled,
     updateProfile,
     resetProfile,
     resetAllProfilesForPrinter,
