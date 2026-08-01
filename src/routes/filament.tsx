@@ -25,7 +25,10 @@ import { PrinterSelector } from "@/components/printer-selector";
 import { useAppSettingsContext } from "@/components/app-settings-provider";
 import { FILAMENT_TYPES, type FilamentType, type FilamentProfile, isModified } from "@/lib/filaments";
 import { getPrinterById } from "@/lib/printers";
+import { getFilamentCapabilityWarnings, getTempOverrideWarning } from "@/lib/compatibility";
+import { useTrackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/filament")({
   component: FilamentPage,
