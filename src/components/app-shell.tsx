@@ -1,14 +1,17 @@
 import { Link, useRouter } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 import {
-  Cog,
+  BarChart3,
   FlaskConical,
   Home,
+  LogIn,
+  LogOut,
   MessageSquareText,
   Printer,
+  UserCircle2,
   Wrench,
 } from "lucide-react";
 
-import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +24,9 @@ import { Button } from "@/components/ui/button";
 import { PrinterSelector } from "@/components/printer-selector";
 import { AdBanner } from "@/components/ad-banner";
 import { useAppSettingsContext } from "@/components/app-settings-provider";
+import { useAuth } from "@/hooks/use-auth";
+import { useTrackEvent } from "@/lib/analytics";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 interface AppShellProps {
@@ -28,9 +34,35 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const { settings, setSelectedPrinterId, setAdsEnabled } = useAppSettingsContext();
+  const { settings, setSelectedPrinterId } = useAppSettingsContext();
   const router = useRouter();
   const currentPath = router.state.location.pathname;
+  const { user, isAdmin } = useAuth();
+  const track = useTrackEvent();
+  const lastTracked = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (lastTracked.current === currentPath) return;
+    lastTracked.current = currentPath;
+    track({
+      eventName: "page_view",
+      pagePath: currentPath,
+      printerId: settings.selectedPrinterId,
+      filamentType: settings.selectedFilamentType,
+    });
+    // Only re-run on path change; settings are read as context.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPath]);
+
+  const handlePrinterChange = (id: typeof settings.selectedPrinterId) => {
+    setSelectedPrinterId(id);
+    track({ eventName: "printer_selected", pagePath: currentPath, printerId: id });
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    void router.navigate({ to: "/auth", replace: true });
+  };
 
   const navItems = [
     { to: "/", label: "Home", icon: Home },
@@ -75,31 +107,42 @@ export function AppShell({ children }: AppShellProps) {
           <div className="flex items-center gap-2">
             <PrinterSelector
               value={settings.selectedPrinterId}
-              onChange={setSelectedPrinterId}
+              onChange={handlePrinterChange}
               className="w-40 sm:w-52"
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Settings">
-                  <Cog className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Settings</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="flex items-center justify-between gap-4"
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  <span className="text-sm">Show ads</span>
-                  <Switch
-                    checked={settings.adsEnabled}
-                    onCheckedChange={setAdsEnabled}
-                    aria-label="Toggle ads"
-                  />
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Account">
+                    <UserCircle2 className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="max-w-52 truncate text-xs font-normal text-muted-foreground">
+                    {user.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        Usage metrics
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2">
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="ghost" size="icon" asChild aria-label="Sign in">
+                <Link to="/auth">
+                  <LogIn className="h-5 w-5" />
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -129,7 +172,7 @@ export function AppShell({ children }: AppShellProps) {
 
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
 
-      <AdBanner enabled={settings.adsEnabled} />
+      <AdBanner />
     </div>
   );
 }
