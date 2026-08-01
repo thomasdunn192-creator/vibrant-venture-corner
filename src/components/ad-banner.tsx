@@ -1,10 +1,4 @@
-interface AdBannerProps {
-  enabled: boolean;
-}
-
-export function AdBanner({ enabled }: AdBannerProps) {
-  if (!enabled) return null;
-
+export function AdBanner() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card px-4 py-2 shadow-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-center gap-3">
