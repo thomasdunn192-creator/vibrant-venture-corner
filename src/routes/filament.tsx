@@ -163,7 +163,7 @@ function FilamentPage() {
             />
             <Select
               value={filament}
-              onValueChange={(v) => setSelectedFilamentType(v as FilamentType)}
+              onValueChange={(v) => handleFilamentChange(v as FilamentType)}
             >
               <SelectTrigger className="w-32" aria-label="Select filament">
                 <SelectValue />
@@ -178,6 +178,44 @@ function FilamentPage() {
             </Select>
           </div>
         </div>
+
+        <div className="mb-6 rounded-lg border border-border bg-muted/40 px-4 py-3">
+          <div className="flex items-start gap-2">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Stay inside your printer's limits.</span>{" "}
+              We recommend against running filaments that exceed what the {printer.shortName} is
+              rated for — hotend up to {printer.maxNozzleTemp}°C, bed up to {printer.maxBedTemp}°C
+              {printer.hasEnclosure || printer.hasHeatedChamber ? ", enclosed chamber" : ", open frame"}.
+              Pushing past those ratings risks damaging the hotend, bed, or wiring and usually gives
+              warped, weak parts. If a material needs more than your machine offers, pick a
+              lower-temperature filament instead.
+            </p>
+          </div>
+        </div>
+
+        {capabilityWarnings.length > 0 && (
+          <div className="mb-6 space-y-2">
+            {capabilityWarnings.map((warning, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex items-start gap-2 rounded-lg border px-4 py-3 text-sm",
+                  warning.level === "danger"
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                    : "border-primary/30 bg-primary/5 text-foreground",
+                )}
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  <span className="font-medium">Not recommended: </span>
+                  {warning.message}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
 
         <Card>
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
