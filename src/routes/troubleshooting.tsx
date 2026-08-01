@@ -499,9 +499,7 @@ function TroubleshootingPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          setChatTopic(`I'm having ${topic.symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}.`)
-                        }
+                        onClick={() => askAi(topic.symptom)}
                       >
                         <Sparkles className="mr-1.5 h-4 w-4" />
                         Ask the AI about this
@@ -513,9 +511,10 @@ function TroubleshootingPage() {
             </Accordion>
           </div>
 
-          <div className="lg:sticky lg:top-24 lg:self-start">
-            <ChatPanel topicPrefill={chatTopic} />
+          <div ref={chatRef} className="lg:sticky lg:top-24 lg:self-start">
+            <ChatPanel pending={pending} />
           </div>
+
         </div>
       </div>
     </AppShell>
