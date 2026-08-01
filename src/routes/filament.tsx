@@ -57,10 +57,11 @@ interface NumberFieldProps {
   value: number;
   defaultValue: number;
   unit: string;
+  warning?: string | null;
   onChange: (value: number) => void;
 }
 
-function NumberField({ label, value, defaultValue, unit, onChange }: NumberFieldProps) {
+function NumberField({ label, value, defaultValue, unit, warning, onChange }: NumberFieldProps) {
   const modified = value !== defaultValue;
   return (
     <div className="space-y-1.5">
@@ -80,17 +81,23 @@ function NumberField({ label, value, defaultValue, unit, onChange }: NumberField
           className={cn(
             "pr-10",
             modified && "border-primary/50 ring-1 ring-primary/20",
+            warning && "border-destructive/60 ring-1 ring-destructive/20",
           )}
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
           {unit}
         </span>
       </div>
+      {warning && (
+        <p className="flex items-start gap-1.5 text-xs text-destructive">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {warning}
+        </p>
+      )}
     </div>
   );
 }
 
-function FilamentPage() {
   const {
     settings,
     setSelectedPrinterId,
