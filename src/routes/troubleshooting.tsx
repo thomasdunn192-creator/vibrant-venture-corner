@@ -234,62 +234,88 @@ interface ChatMessage {
   content: string;
 }
 
-function ChatPanel({ topicPrefill }: { topicPrefill: string | undefined }) {
+interface PendingMessage {
+  text: string;
+  nonce: number;
+}
+
+function ChatPanel({ pending }: { pending: PendingMessage | null }) {
   const { settings } = useAppSettingsContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState(topicPrefill ?? "");
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const chat = useServerFn(chatWithAssistant);
-
-  useEffect(() => {
-    if (topicPrefill) {
-      setInput(topicPrefill);
-    }
-  }, [topicPrefill]);
+  const track = useTrackEvent();
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const lastNonce = useRef<number | null>(null);
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
-    const userText = input.trim();
-    setInput("");
-    setError(null);
-    setMessages((prev) => [...prev, { role: "user", content: userText }]);
-    setLoading(true);
-
-    try {
-      const profile = settings.profiles[settings.selectedPrinterId][settings.selectedFilamentType];
-      const result = await chat({
-        data: {
-          printerId: settings.selectedPrinterId,
-          filamentType: settings.selectedFilamentType,
-          profile: {
-            nozzleTempC: { current: profile.nozzleTempC.current },
-            bedTempC: { current: profile.bedTempC.current },
-            printSpeedMmS: { current: profile.printSpeedMmS.current },
-            fanSpeedPercent: { current: profile.fanSpeedPercent.current },
-            retractionDistanceMm: { current: profile.retractionDistanceMm.current },
-            retractionSpeedMmS: { current: profile.retractionSpeedMmS.current },
-            chamberTempC: {
-              applicable: profile.chamberTempC.applicable,
-              current: profile.chamberTempC.current,
-            },
-          },
-          messages: [{ role: "user", content: userText }],
-          topic: userText,
-        },
+  const send = useCallback(
+    async (userText: string) => {
+      if (!userText.trim() || sendingRef.current) return;
+      sendingRef.current = true;
+      const current = settingsRef.current;
+      setInput("");
+      setError(null);
+      setMessages((prev) => [...prev, { role: "user", content: userText }]);
+      setLoading(true);
+      track({
+        eventName: "chat_message_sent",
+        printerId: current.selectedPrinterId,
+        filamentType: current.selectedFilamentType,
       });
-      setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+
+      try {
+        const profile = current.profiles[current.selectedPrinterId][current.selectedFilamentType];
+        const result = await chat({
+          data: {
+            printerId: current.selectedPrinterId,
+            filamentType: current.selectedFilamentType,
+            profile: {
+              nozzleTempC: { current: profile.nozzleTempC.current },
+              bedTempC: { current: profile.bedTempC.current },
+              printSpeedMmS: { current: profile.printSpeedMmS.current },
+              fanSpeedPercent: { current: profile.fanSpeedPercent.current },
+              retractionDistanceMm: { current: profile.retractionDistanceMm.current },
+              retractionSpeedMmS: { current: profile.retractionSpeedMmS.current },
+              chamberTempC: {
+                applicable: profile.chamberTempC.applicable,
+                current: profile.chamberTempC.current,
+              },
+            },
+            messages: [{ role: "user", content: userText }],
+            topic: userText,
+          },
+        });
+        setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+      } finally {
+        setLoading(false);
+        sendingRef.current = false;
+      }
+    },
+    [chat, track],
+  );
+
+  useEffect(() => {
+    if (!pending) return;
+    if (lastNonce.current === pending.nonce) return;
+    lastNonce.current = pending.nonce;
+    void send(pending.text);
+  }, [pending, send]);
+
+  const handleSend = () => {
+    void send(input.trim());
   };
+
 
   return (
     <Card className="flex h-[600px] flex-col">
