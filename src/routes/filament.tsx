@@ -266,6 +266,7 @@ function FilamentPage() {
                 value={profile.nozzleTempC.current}
                 defaultValue={profile.nozzleTempC.default}
                 unit="°C"
+                warning={nozzleWarning}
                 onChange={(v) => patch({ nozzleTempC: { ...profile.nozzleTempC, current: v } })}
               />
               <NumberField
@@ -273,8 +274,10 @@ function FilamentPage() {
                 value={profile.bedTempC.current}
                 defaultValue={profile.bedTempC.default}
                 unit="°C"
+                warning={bedWarning}
                 onChange={(v) => patch({ bedTempC: { ...profile.bedTempC, current: v } })}
               />
+
               <NumberField
                 label="Print speed"
                 value={profile.printSpeedMmS.current}
