@@ -25,6 +25,7 @@ import { PrinterSelector } from "@/components/printer-selector";
 import { useAppSettingsContext } from "@/components/app-settings-provider";
 import { FILAMENT_TYPES, type FilamentType, type FilamentProfile, isModified } from "@/lib/filaments";
 import { getPrinterById } from "@/lib/printers";
+import { getProfile } from "@/lib/settings";
 import { getFilamentCapabilityWarnings, getTempOverrideWarning } from "@/lib/compatibility";
 import { useTrackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,7 @@ function NumberField({ label, value, defaultValue, unit, warning, onChange }: Nu
 function FilamentPage() {
   const {
     settings,
+    printers,
     setSelectedPrinterId,
     setSelectedFilamentType,
     updateProfile,
@@ -109,9 +111,9 @@ function FilamentPage() {
   } = useAppSettingsContext();
   const track = useTrackEvent();
 
-  const printer = getPrinterById(settings.selectedPrinterId);
+  const printer = getPrinterById(settings.selectedPrinterId, printers);
   const filament = settings.selectedFilamentType;
-  const profile = settings.profiles[settings.selectedPrinterId][filament];
+  const profile = getProfile(settings, settings.selectedPrinterId, filament);
   const capabilityWarnings = getFilamentCapabilityWarnings(
     settings.selectedPrinterId,
     filament,

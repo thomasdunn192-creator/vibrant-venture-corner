@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { PrinterSelector } from "@/components/printer-selector";
 import { AdBanner } from "@/components/ad-banner";
 import { useAppSettingsContext } from "@/components/app-settings-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { useTrackEvent } from "@/lib/analytics";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +68,7 @@ export function AppShell({ children }: AppShellProps) {
   const navItems = [
     { to: "/", label: "Home", icon: Home },
     { to: "/filament", label: "Filament", icon: FlaskConical },
+    { to: "/printers", label: "Printers", icon: Printer },
     { to: "/setup", label: "Setup", icon: Wrench },
     { to: "/troubleshooting", label: "Troubleshoot", icon: MessageSquareText },
   ];
@@ -110,6 +112,7 @@ export function AppShell({ children }: AppShellProps) {
               onChange={handlePrinterChange}
               className="w-40 sm:w-52"
             />
+            <ThemeToggle />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

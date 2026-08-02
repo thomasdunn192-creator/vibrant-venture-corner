@@ -37,6 +37,7 @@ import {
 import { useServerFn } from "@tanstack/react-start";
 import { chatWithAssistant } from "@/lib/ai.functions";
 import { getPrinterById } from "@/lib/printers";
+import { getProfile } from "@/lib/settings";
 import { useTrackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
@@ -274,7 +275,7 @@ function ChatPanel({ pending }: { pending: PendingMessage | null }) {
       });
 
       try {
-        const profile = current.profiles[current.selectedPrinterId][current.selectedFilamentType];
+        const profile = getProfile(current, current.selectedPrinterId, current.selectedFilamentType);
         const result = await chat({
           data: {
             printerId: current.selectedPrinterId,

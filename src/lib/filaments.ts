@@ -373,20 +373,24 @@ export const DEFAULT_PROFILES: Record<PrinterId, Record<FilamentType, FilamentPr
   },
 };
 
+/** Printers without a curated table (user-created ones) inherit this baseline. */
+const FALLBACK_PRINTER_ID = "creality-ender-3";
+
 export function getDefaultProfile(
   printerId: PrinterId,
   filamentType: FilamentType,
 ): FilamentProfile {
-  const profile = DEFAULT_PROFILES[printerId]?.[filamentType];
-  if (!profile) throw new Error(`No default profile for ${printerId} + ${filamentType}`);
-  return structuredClone(profile);
+  const table = DEFAULT_PROFILES[printerId] ?? DEFAULT_PROFILES[FALLBACK_PRINTER_ID]!;
+  const profile = structuredClone(table[filamentType]);
+  profile.printerId = printerId;
+  return profile;
 }
 
 export function getAllDefaultProfiles(printerId: PrinterId): Record<FilamentType, FilamentProfile> {
-  const profiles = DEFAULT_PROFILES[printerId];
-  if (!profiles) throw new Error(`No default profiles for ${printerId}`);
-  return structuredClone(profiles);
+  const entries = FILAMENT_TYPES.map((type) => [type, getDefaultProfile(printerId, type)] as const);
+  return Object.fromEntries(entries) as Record<FilamentType, FilamentProfile>;
 }
+
 
 export function cloneProfile(profile: FilamentProfile): FilamentProfile {
   return structuredClone(profile);

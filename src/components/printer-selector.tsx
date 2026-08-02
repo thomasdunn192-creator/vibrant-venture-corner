@@ -5,7 +5,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getPrinterById, PRINTERS } from "@/lib/printers";
+import { useAppSettingsContext } from "@/components/app-settings-provider";
+import { getPrinterById } from "@/lib/printers";
 import type { PrinterId } from "@/lib/printers";
 
 interface PrinterSelectorProps {
@@ -15,7 +16,8 @@ interface PrinterSelectorProps {
 }
 
 export function PrinterSelector({ value, onChange, className }: PrinterSelectorProps) {
-  const selected = getPrinterById(value);
+  const { printers } = useAppSettingsContext();
+  const selected = getPrinterById(value, printers);
 
   return (
     <Select value={value} onValueChange={(v) => onChange(v as PrinterId)}>
@@ -31,7 +33,7 @@ export function PrinterSelector({ value, onChange, className }: PrinterSelectorP
         </div>
       </SelectTrigger>
       <SelectContent>
-        {PRINTERS.map((printer) => (
+        {printers.map((printer) => (
           <SelectItem key={printer.id} value={printer.id}>
             <div className="flex items-center gap-2">
               <img

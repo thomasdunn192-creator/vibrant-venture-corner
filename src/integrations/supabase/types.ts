@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      printer_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          is_custom: boolean
+          overrides: Json
+          printer_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_custom?: boolean
+          overrides?: Json
+          printer_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_custom?: boolean
+          overrides?: Json
+          printer_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      troubleshooting_log: {
+        Row: {
+          answer: string | null
+          created_at: string
+          filament_type: string | null
+          id: string
+          image_paths: Json
+          kind: string
+          local_id: string
+          notes: string | null
+          occurred_at: string
+          outcome: string
+          printer_id: string | null
+          question: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer?: string | null
+          created_at?: string
+          filament_type?: string | null
+          id?: string
+          image_paths?: Json
+          kind: string
+          local_id: string
+          notes?: string | null
+          occurred_at?: string
+          outcome?: string
+          printer_id?: string | null
+          question?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer?: string | null
+          created_at?: string
+          filament_type?: string | null
+          id?: string
+          image_paths?: Json
+          kind?: string
+          local_id?: string
+          notes?: string | null
+          occurred_at?: string
+          outcome?: string
+          printer_id?: string | null
+          question?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       usage_events: {
         Row: {
           created_at: string

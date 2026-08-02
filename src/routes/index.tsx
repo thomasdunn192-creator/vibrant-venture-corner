@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/app-shell";
 import { useAppSettingsContext } from "@/components/app-settings-provider";
-import { PRINTERS, getPrinterById } from "@/lib/printers";
+import { getPrinterById } from "@/lib/printers";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { settings, setSelectedPrinterId } = useAppSettingsContext();
+  const { settings, printers, setSelectedPrinterId } = useAppSettingsContext();
 
   const features = [
     {
@@ -109,7 +109,7 @@ function HomePage() {
             <span className="text-sm text-muted-foreground">Selection persists across pages</span>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {PRINTERS.map((printer) => {
+            {printers.map((printer) => {
               const isSelected = settings.selectedPrinterId === printer.id;
               const isFlagship = printer.flagship;
               return (
