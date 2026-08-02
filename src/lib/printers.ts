@@ -5,7 +5,10 @@ import printerPrusaMk4 from "@/assets/printer-prusa-mk4.png";
 import printerEnder3 from "@/assets/printer-ender3.png";
 import printerEnder5 from "@/assets/printer-ender5.png";
 
-export type PrinterId =
+/** Printer ids are open-ended: the six stock ids plus any user-created printer. */
+export type PrinterId = string;
+
+export type StockPrinterId =
   | "makergear-ultra-one"
   | "bambu-p1s"
   | "prusa-core-one"
@@ -26,9 +29,27 @@ export interface Printer {
   hasHeatedChamber: boolean;
   extruderType: "direct" | "bowden";
   flagship: boolean;
+  /** True for printers the user added themselves. */
+  custom?: boolean;
 }
 
-export const PRINTERS: Printer[] = [
+/** Fields the user is allowed to edit on a printer profile. */
+export type PrinterOverride = Partial<
+  Pick<
+    Printer,
+    | "name"
+    | "shortName"
+    | "buildVolume"
+    | "nozzleDiameterDefault"
+    | "maxNozzleTemp"
+    | "maxBedTemp"
+    | "hasEnclosure"
+    | "hasHeatedChamber"
+    | "extruderType"
+  >
+>;
+
+export const STOCK_PRINTERS: Printer[] = [
   {
     id: "makergear-ultra-one",
     name: "MakerGear Ultra One",
