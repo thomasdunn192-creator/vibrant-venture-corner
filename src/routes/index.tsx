@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { settings, setSelectedPrinterId } = useAppSettingsContext();
+  const { settings, printers, setSelectedPrinterId } = useAppSettingsContext();
 
   const features = [
     {
