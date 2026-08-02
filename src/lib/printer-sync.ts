@@ -67,7 +67,7 @@ export function usePrinterProfileSync({
             const base = createCustomPrinter(row.overrides.name ?? "Custom printer");
             const merged: Printer = { ...base };
             for (const [key, value] of Object.entries(row.overrides)) {
-              if (value !== undefined) (merged as Record<string, unknown>)[key] = value;
+              if (value !== undefined) (merged as unknown as Record<string, unknown>)[key] = value;
             }
             merged.id = row.printerId;
             merged.custom = true;
