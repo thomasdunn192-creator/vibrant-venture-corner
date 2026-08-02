@@ -150,7 +150,7 @@ interface EditorProps {
   edited: boolean;
   onChange: (patch: Partial<Printer>) => void;
   onReset: () => void;
-  onDelete?: () => void;
+  onDelete?: (() => void) | undefined;
 }
 
 function PrinterEditor({ printer, edited, onChange, onReset, onDelete }: EditorProps) {
