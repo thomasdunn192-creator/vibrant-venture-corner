@@ -6,6 +6,7 @@ import {
   deletePrinterProfile,
   fetchPrinterProfiles,
   pushPrinterProfiles,
+  type PrinterOverrideDTO,
 } from "./printer-sync.functions";
 import { createCustomPrinter, type Printer, type PrinterOverride } from "./printers";
 
@@ -63,7 +64,14 @@ export function usePrinterProfileSync({
         const customs: Printer[] = [];
         for (const row of rows) {
           if (row.isCustom) {
-            customs.push({ ...createCustomPrinter(row.overrides.name ?? "Custom printer"), ...row.overrides, id: row.printerId, custom: true });
+            const base = createCustomPrinter(row.overrides.name ?? "Custom printer");
+            const merged: Printer = { ...base };
+            for (const [key, value] of Object.entries(row.overrides)) {
+              if (value !== undefined) (merged as Record<string, unknown>)[key] = value;
+            }
+            merged.id = row.printerId;
+            merged.custom = true;
+            customs.push(merged);
           } else {
             overrides[row.printerId] = row.overrides as PrinterOverride;
           }
@@ -84,7 +92,7 @@ export function usePrinterProfileSync({
         .map(([printerId, value]) => ({
           printerId,
           isCustom: false,
-          overrides: value as Record<string, never>,
+          overrides: value as PrinterOverrideDTO,
         })),
       ...customPrinters.map((printer) => ({
         printerId: printer.id,
@@ -99,7 +107,7 @@ export function usePrinterProfileSync({
           hasEnclosure: printer.hasEnclosure,
           hasHeatedChamber: printer.hasHeatedChamber,
           extruderType: printer.extruderType,
-        } as Record<string, never>,
+        } satisfies PrinterOverrideDTO,
       })),
     ];
     const serialized = JSON.stringify(rows);
