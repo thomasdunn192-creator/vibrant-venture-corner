@@ -2,7 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const overrideSchema = z.record(z.string(), z.unknown());
+const overrideSchema = z.object({
+  name: z.string().max(80).optional(),
+  shortName: z.string().max(40).optional(),
+  buildVolume: z.string().max(80).optional(),
+  nozzleDiameterDefault: z.number().optional(),
+  maxNozzleTemp: z.number().optional(),
+  maxBedTemp: z.number().optional(),
+  hasEnclosure: z.boolean().optional(),
+  hasHeatedChamber: z.boolean().optional(),
+  extruderType: z.enum(["direct", "bowden"]).optional(),
+});
+
+export type PrinterOverrideDTO = z.infer<typeof overrideSchema>;
 
 const rowSchema = z.object({
   printerId: z.string().min(1).max(80),
@@ -13,7 +25,7 @@ const rowSchema = z.object({
 export interface RemotePrinterRow {
   printerId: string;
   isCustom: boolean;
-  overrides: Record<string, unknown>;
+  overrides: PrinterOverrideDTO;
 }
 
 /** Reads the signed-in user's printer edits and custom printers. */
@@ -27,7 +39,7 @@ export const fetchPrinterProfiles = createServerFn({ method: "POST" })
     return (data ?? []).map((row) => ({
       printerId: row.printer_id,
       isCustom: row.is_custom,
-      overrides: (row.overrides ?? {}) as Record<string, unknown>,
+      overrides: overrideSchema.partial().catch({}).parse(row.overrides ?? {}),
     }));
   });
 
@@ -41,7 +53,7 @@ export const pushPrinterProfiles = createServerFn({ method: "POST" })
       user_id: context.userId,
       printer_id: row.printerId,
       is_custom: row.isCustom,
-      overrides: row.overrides,
+      overrides: row.overrides as Record<string, string | number | boolean>,
     }));
     const { error } = await context.supabase
       .from("printer_profiles")
