@@ -9,7 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
-import { getPrinterById, PRINTERS } from "@/lib/printers";
+import { getPrinterById } from "@/lib/printers";
+import { getSetupProgress } from "@/lib/settings";
 import type { PrinterId } from "@/lib/printers";
 
 export const Route = createFileRoute("/setup")({
@@ -127,7 +128,7 @@ const GENERIC_STEPS = [
 
 function SetupSteps({ printerId, steps }: { printerId: PrinterId; steps: typeof ULTRA_ONE_STEPS }) {
   const { settings, toggleSetupStep } = useAppSettingsContext();
-  const progress = settings.setupProgress[printerId];
+  const progress = getSetupProgress(settings, printerId);
   const completed = progress.filter(Boolean).length;
   const percentage = Math.round((completed / steps.length) * 100);
 
@@ -174,8 +175,8 @@ function SetupSteps({ printerId, steps }: { printerId: PrinterId; steps: typeof 
 }
 
 function SetupPage() {
-  const { settings, setSelectedPrinterId } = useAppSettingsContext();
-  const selected = getPrinterById(settings.selectedPrinterId);
+  const { settings, printers, setSelectedPrinterId } = useAppSettingsContext();
+  const selected = getPrinterById(settings.selectedPrinterId, printers);
 
   return (
     <AppShell>
@@ -198,7 +199,7 @@ function SetupPage() {
 
         <Tabs defaultValue={settings.selectedPrinterId} className="w-full">
           <TabsList className="mb-4 flex h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
-            {PRINTERS.map((printer) => (
+            {printers.map((printer) => (
               <TabsTrigger
                 key={printer.id}
                 value={printer.id}
@@ -210,7 +211,7 @@ function SetupPage() {
             ))}
           </TabsList>
 
-          {PRINTERS.map((printer) => (
+          {printers.map((printer) => (
             <TabsContent key={printer.id} value={printer.id}>
               <Card>
                 <CardHeader>
