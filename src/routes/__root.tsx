@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppSettingsProvider } from "@/components/app-settings-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider, themeInitScript } from "@/components/theme-provider";
 
 function NotFoundComponent() {
   return (
@@ -107,6 +108,7 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
         {children}
@@ -121,11 +123,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppSettingsProvider>
+      <ThemeProvider>
+        <AppSettingsProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster />
-      </AppSettingsProvider>
+          <Outlet />
+          <Toaster />
+        </AppSettingsProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
