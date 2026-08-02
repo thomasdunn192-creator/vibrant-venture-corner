@@ -138,8 +138,75 @@ export const STOCK_PRINTERS: Printer[] = [
 
 export const DEFAULT_PRINTER_ID: PrinterId = "makergear-ultra-one";
 
-export function getPrinterById(id: PrinterId): Printer {
-  const printer = PRINTERS.find((p) => p.id === id);
-  if (!printer) throw new Error(`Unknown printer: ${id}`);
-  return printer;
+/** Legacy alias: the untouched stock printer list. */
+export const PRINTERS: Printer[] = STOCK_PRINTERS;
+
+export const GENERIC_PRINTER_IMAGE = printerPrusaMk4;
+
+export function createCustomPrinter(name: string): Printer {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 32);
+  return {
+    id: `custom-${slug || "printer"}-${Math.random().toString(36).slice(2, 7)}`,
+    name,
+    shortName: name.length > 14 ? name.slice(0, 14) : name,
+    image: GENERIC_PRINTER_IMAGE,
+    buildVolume: "220 x 220 x 250 mm",
+    nozzleDiameterDefault: 0.4,
+    maxNozzleTemp: 260,
+    maxBedTemp: 110,
+    hasEnclosure: false,
+    hasHeatedChamber: false,
+    extruderType: "direct",
+    flagship: false,
+    custom: true,
+  };
 }
+
+/** Merges stock printers with user edits and user-created printers. */
+export function resolvePrinters(
+  overrides: Record<string, PrinterOverride> = {},
+  customPrinters: Printer[] = [],
+): Printer[] {
+  const stock = STOCK_PRINTERS.map((printer) => ({
+    ...printer,
+    ...(overrides[printer.id] ?? {}),
+  }));
+  const custom = customPrinters.map((printer) => ({
+    ...printer,
+    ...(overrides[printer.id] ?? {}),
+    image: printer.image || GENERIC_PRINTER_IMAGE,
+    custom: true,
+  }));
+  return [...stock, ...custom];
+}
+
+export function isStockPrinter(id: PrinterId): boolean {
+  return STOCK_PRINTERS.some((p) => p.id === id);
+}
+
+export function getStockPrinter(id: PrinterId): Printer | undefined {
+  return STOCK_PRINTERS.find((p) => p.id === id);
+}
+
+/**
+ * Looks a printer up. Pass the resolved list (stock + edits + custom) when
+ * available; falls back to the stock list, then to a safe placeholder so a
+ * stale selection can never crash the app.
+ */
+export function getPrinterById(id: PrinterId, printers?: Printer[]): Printer {
+  const list = printers ?? STOCK_PRINTERS;
+  const printer = list.find((p) => p.id === id) ?? STOCK_PRINTERS.find((p) => p.id === id);
+  if (printer) return printer;
+  return { ...createCustomPrinter("Unknown printer"), id };
+}
+
+export function isOverridden(printer: Printer, overrides: Record<string, PrinterOverride>): boolean {
+  const o = overrides[printer.id];
+  if (!o) return false;
+  return Object.keys(o).length > 0;
+}
+
