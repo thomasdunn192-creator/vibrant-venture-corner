@@ -98,7 +98,7 @@ function AuthPage() {
           <CardHeader>
             <CardTitle>{mode === "signin" ? "Sign in" : "Create an account"}</CardTitle>
             <CardDescription>
-              Admin access is required to view usage metrics.
+              Sign in to sync your settings across devices.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
