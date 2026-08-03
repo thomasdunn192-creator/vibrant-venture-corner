@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/accordion";
 import { useServerFn } from "@tanstack/react-start";
 import { chatWithAssistant } from "@/lib/ai.functions";
+import { MAX_MESSAGE_LENGTH } from "@/lib/ai-limits";
+
 import { getPrinterById } from "@/lib/printers";
 import { getProfile } from "@/lib/settings";
 import { useTrackEvent } from "@/lib/analytics";
@@ -389,6 +391,7 @@ function ChatPanel({ pending }: { pending: PendingMessage | null }) {
           <Input
             placeholder="e.g. Why is my first layer not sticking?"
             value={input}
+            maxLength={MAX_MESSAGE_LENGTH}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             className="flex-1"
@@ -397,6 +400,16 @@ function ChatPanel({ pending }: { pending: PendingMessage | null }) {
             <Send className="h-4 w-4" />
           </Button>
         </div>
+        {input.length >= MAX_MESSAGE_LENGTH - 200 && (
+          <p
+            className={`mt-2 text-right text-xs ${
+              input.length >= MAX_MESSAGE_LENGTH ? "text-destructive" : "text-muted-foreground"
+            }`}
+          >
+            {input.length} / {MAX_MESSAGE_LENGTH}
+          </p>
+        )}
+
       </CardContent>
     </Card>
   );
