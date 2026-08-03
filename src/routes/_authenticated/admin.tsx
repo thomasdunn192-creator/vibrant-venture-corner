@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -7,9 +7,20 @@ import { BarChart3, RefreshCw } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { getUsageMetrics, type CountRow } from "@/lib/analytics.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  ssr: false,
+  beforeLoad: async ({ context }) => {
+    const userId = (context as { user?: { id: string } }).user?.id;
+    if (!userId) throw redirect({ to: "/auth" });
+    const { data: isAdmin, error } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (error || !isAdmin) throw redirect({ to: "/" });
+  },
   component: AdminPage,
   head: () => ({
     meta: [
