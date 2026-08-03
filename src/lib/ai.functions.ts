@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateText } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai.server";
+import { MAX_MESSAGE_LENGTH } from "./ai-limits";
 import type { FilamentProfile } from "./filaments";
 import type { PrinterId } from "./printers";
 
@@ -25,7 +26,7 @@ const chatInputSchema = z.object({
   messages: z.array(
     z.object({
       role: z.enum(["system", "user", "assistant"]),
-      content: z.string(),
+      content: z.string().max(MAX_MESSAGE_LENGTH),
     }),
   ),
   topic: z.string().optional(),
