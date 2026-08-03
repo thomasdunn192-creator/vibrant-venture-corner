@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getVerifiedUserId } from "./analytics.server";
 
 const trackInputSchema = z.object({
   eventName: z.string().min(1).max(64),
@@ -9,12 +10,13 @@ const trackInputSchema = z.object({
   filamentType: z.string().max(32).optional(),
   detail: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
   visitorId: z.string().max(64).optional(),
-  userId: z.string().uuid().optional(),
 });
 
 export const trackEvent = createServerFn({ method: "POST" })
   .inputValidator((data) => trackInputSchema.parse(data))
   .handler(async ({ data }) => {
+    // Never trust a client-supplied user id: resolve it from the request session.
+    const verifiedUserId = await getVerifiedUserId();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("usage_events").insert({
       event_name: data.eventName,
@@ -23,7 +25,7 @@ export const trackEvent = createServerFn({ method: "POST" })
       filament_type: data.filamentType ?? null,
       detail: data.detail ?? null,
       visitor_id: data.visitorId ?? null,
-      user_id: data.userId ?? null,
+      user_id: verifiedUserId,
     });
     if (error) {
       console.error("trackEvent insert failed", error.message);
