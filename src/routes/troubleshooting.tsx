@@ -35,7 +35,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useServerFn } from "@tanstack/react-start";
-import { chatWithAssistant, MAX_MESSAGE_LENGTH } from "@/lib/ai.functions";
+import { chatWithAssistant } from "@/lib/ai.functions";
+import { MAX_MESSAGE_LENGTH } from "@/lib/ai-limits";
+
 import { getPrinterById } from "@/lib/printers";
 import { getProfile } from "@/lib/settings";
 import { useTrackEvent } from "@/lib/analytics";
