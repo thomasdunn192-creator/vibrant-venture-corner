@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { getVerifiedUserId } from "./analytics.server";
 
 const trackInputSchema = z.object({
   eventName: z.string().min(1).max(64),
@@ -16,6 +15,7 @@ export const trackEvent = createServerFn({ method: "POST" })
   .inputValidator((data) => trackInputSchema.parse(data))
   .handler(async ({ data }) => {
     // Never trust a client-supplied user id: resolve it from the request session.
+    const { getVerifiedUserId } = await import("./analytics.server");
     const verifiedUserId = await getVerifiedUserId();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("usage_events").insert({
