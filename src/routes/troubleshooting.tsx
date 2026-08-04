@@ -243,12 +243,19 @@ interface PendingMessage {
   nonce: number;
 }
 
-function ChatPanel({ pending }: { pending: PendingMessage | null }) {
+interface ChatPanelProps {
+  pending: PendingMessage | null;
+  canSave: boolean;
+  onSaveExchange: (question: string, answer: string) => void;
+}
+
+function ChatPanel({ pending, canSave, onSaveExchange }: ChatPanelProps) {
   const { settings } = useAppSettingsContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedIndexes, setSavedIndexes] = useState<number[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const chat = useServerFn(chatWithAssistant);
   const track = useTrackEvent();
@@ -260,6 +267,7 @@ function ChatPanel({ pending }: { pending: PendingMessage | null }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
 
   const send = useCallback(
     async (userText: string) => {
