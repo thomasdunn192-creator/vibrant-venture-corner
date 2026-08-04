@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as FilamentRouteImport } from './routes/filament'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as PrintersRouteImport } from './routes/printers'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as TroubleshootingRouteImport } from './routes/troubleshooting'
@@ -35,6 +36,11 @@ const AuthRoute = AuthRouteImport.update({
 const FilamentRoute = FilamentRouteImport.update({
   id: '/filament',
   path: '/filament',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrintersRoute = PrintersRouteImport.update({
@@ -62,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/filament': typeof FilamentRoute
+  '/history': typeof HistoryRoute
   '/printers': typeof PrintersRoute
   '/setup': typeof SetupRoute
   '/troubleshooting': typeof TroubleshootingRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/filament': typeof FilamentRoute
+  '/history': typeof HistoryRoute
   '/printers': typeof PrintersRoute
   '/setup': typeof SetupRoute
   '/troubleshooting': typeof TroubleshootingRoute
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/filament': typeof FilamentRoute
+  '/history': typeof HistoryRoute
   '/printers': typeof PrintersRoute
   '/setup': typeof SetupRoute
   '/troubleshooting': typeof TroubleshootingRoute
@@ -93,6 +102,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/filament'
+    | '/history'
     | '/printers'
     | '/setup'
     | '/troubleshooting'
@@ -102,6 +112,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/filament'
+    | '/history'
     | '/printers'
     | '/setup'
     | '/troubleshooting'
@@ -112,6 +123,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/filament'
+    | '/history'
     | '/printers'
     | '/setup'
     | '/troubleshooting'
@@ -123,6 +135,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   FilamentRoute: typeof FilamentRoute
+  HistoryRoute: typeof HistoryRoute
   PrintersRoute: typeof PrintersRoute
   SetupRoute: typeof SetupRoute
   TroubleshootingRoute: typeof TroubleshootingRoute
@@ -156,6 +169,13 @@ declare module '@tanstack/react-router' {
       path: '/filament'
       fullPath: '/filament'
       preLoaderRoute: typeof FilamentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/printers': {
@@ -205,6 +225,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   FilamentRoute: FilamentRoute,
+  HistoryRoute: HistoryRoute,
   PrintersRoute: PrintersRoute,
   SetupRoute: SetupRoute,
   TroubleshootingRoute: TroubleshootingRoute,
