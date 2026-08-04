@@ -160,3 +160,20 @@ function toRows(map: Map<string, number>): CountRow[] {
 function sortDesc(map: Map<string, number>): CountRow[] {
   return toRows(map).sort((a, b) => b.count - a.count);
 }
+
+/**
+ * Server-side admin check for route guards. The role lookup happens under the
+ * caller's verified session; the private has_role function is never exposed.
+ */
+export const isCurrentUserAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ isAdmin: boolean }> => {
+    const { data, error } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .limit(1);
+    if (error) return { isAdmin: false };
+    return { isAdmin: (data?.length ?? 0) > 0 };
+  });
