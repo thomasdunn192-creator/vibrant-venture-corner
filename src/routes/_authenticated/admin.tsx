@@ -15,11 +15,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
   beforeLoad: async ({ context }) => {
     const userId = (context as { user?: { id: string } }).user?.id;
     if (!userId) throw redirect({ to: "/auth" });
-    const { data: isAdmin, error } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (error || !isAdmin) throw redirect({ to: "/" });
+    const { isAdmin } = await isCurrentUserAdmin().catch(() => ({ isAdmin: false }));
+    if (!isAdmin) throw redirect({ to: "/" });
   },
   component: AdminPage,
   head: () => ({
