@@ -365,16 +365,44 @@ function ChatPanel({ pending, canSave, onSaveExchange }: ChatPanelProps) {
               >
                 {msg.role === "assistant" ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
               </div>
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
-                  msg.role === "assistant"
-                    ? "rounded-tl-none bg-muted text-foreground"
-                    : "rounded-tr-none bg-primary text-primary-foreground",
+              <div className="max-w-[80%] space-y-1">
+                <div
+                  className={cn(
+                    "rounded-2xl px-4 py-2 text-sm",
+                    msg.role === "assistant"
+                      ? "rounded-tl-none bg-muted text-foreground"
+                      : "rounded-tr-none bg-primary text-primary-foreground",
+                  )}
+                >
+                  <FormattedMessage text={msg.content} markdown={msg.role === "assistant"} />
+                </div>
+                {msg.role === "assistant" && canSave && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    disabled={savedIndexes.includes(index)}
+                    onClick={() => {
+                      const question = messages[index - 1]?.content ?? "";
+                      onSaveExchange(question, msg.content);
+                      setSavedIndexes((prev) => [...prev, index]);
+                    }}
+                  >
+                    {savedIndexes.includes(index) ? (
+                      <>
+                        <Check className="mr-1 h-3.5 w-3.5" />
+                        Saved to log
+                      </>
+                    ) : (
+                      <>
+                        <BookmarkPlus className="mr-1 h-3.5 w-3.5" />
+                        Save to log
+                      </>
+                    )}
+                  </Button>
                 )}
-              >
-                <FormattedMessage text={msg.content} markdown={msg.role === "assistant"} />
               </div>
+
             </div>
           ))}
           {loading && (
