@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import {
