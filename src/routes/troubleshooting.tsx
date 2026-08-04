@@ -483,6 +483,7 @@ function TroubleshootingPage() {
   const [pending, setPending] = useState<PendingMessage | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const track = useTrackEvent();
+  const { addEntry, signedIn } = useTroubleshootingLog();
 
   const askAi = (symptom: string) => {
     const text = `I'm having ${symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}. What should I check and fix?`;
@@ -497,6 +498,30 @@ function TroubleshootingPage() {
       chatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
+
+  const saveSymptom = (symptom: string) => {
+    addEntry({
+      kind: "symptom",
+      title: symptom,
+      printerId: settings.selectedPrinterId,
+      filamentType: settings.selectedFilamentType,
+    });
+    toast.success("Saved to your troubleshooting log");
+  };
+
+  const saveExchange = (question: string, answer: string) => {
+    addEntry({
+      kind: "chat",
+      title: question.slice(0, 120) || "AI conversation",
+      printerId: settings.selectedPrinterId,
+      filamentType: settings.selectedFilamentType,
+      question,
+      answer,
+    });
+    toast.success("Saved to your troubleshooting log");
+  };
+
+
 
 
   return (
