@@ -4,6 +4,7 @@ import {
   BarChart3,
   FlaskConical,
   Home,
+  History as HistoryIcon,
   LogIn,
   LogOut,
   MessageSquareText,
@@ -71,6 +72,8 @@ export function AppShell({ children }: AppShellProps) {
     { to: "/printers", label: "Printers", icon: Printer },
     { to: "/setup", label: "Setup", icon: Wrench },
     { to: "/troubleshooting", label: "Troubleshoot", icon: MessageSquareText },
+    { to: "/history", label: "History", icon: HistoryIcon },
+
   ];
 
   return (

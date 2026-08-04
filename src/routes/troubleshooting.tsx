@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import {
@@ -14,7 +14,11 @@ import {
   Paintbrush,
   AlertTriangle,
   Grid3X3,
+  BookmarkPlus,
+  Check,
+  History,
 } from "lucide-react";
+
 
 import { AppShell } from "@/components/app-shell";
 import { PrinterSelector } from "@/components/printer-selector";
@@ -41,7 +45,10 @@ import { MAX_MESSAGE_LENGTH } from "@/lib/ai-limits";
 import { getPrinterById } from "@/lib/printers";
 import { getProfile } from "@/lib/settings";
 import { useTrackEvent } from "@/lib/analytics";
+import { useTroubleshootingLog } from "@/lib/history";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/troubleshooting")({
   component: TroubleshootingPage,
@@ -243,12 +250,19 @@ interface PendingMessage {
   nonce: number;
 }
 
-function ChatPanel({ pending }: { pending: PendingMessage | null }) {
+interface ChatPanelProps {
+  pending: PendingMessage | null;
+  canSave: boolean;
+  onSaveExchange: (question: string, answer: string) => void;
+}
+
+function ChatPanel({ pending, canSave, onSaveExchange }: ChatPanelProps) {
   const { settings } = useAppSettingsContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedIndexes, setSavedIndexes] = useState<number[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const chat = useServerFn(chatWithAssistant);
   const track = useTrackEvent();
@@ -260,6 +274,7 @@ function ChatPanel({ pending }: { pending: PendingMessage | null }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
 
   const send = useCallback(
     async (userText: string) => {
@@ -357,16 +372,44 @@ function ChatPanel({ pending }: { pending: PendingMessage | null }) {
               >
                 {msg.role === "assistant" ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
               </div>
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
-                  msg.role === "assistant"
-                    ? "rounded-tl-none bg-muted text-foreground"
-                    : "rounded-tr-none bg-primary text-primary-foreground",
+              <div className="max-w-[80%] space-y-1">
+                <div
+                  className={cn(
+                    "rounded-2xl px-4 py-2 text-sm",
+                    msg.role === "assistant"
+                      ? "rounded-tl-none bg-muted text-foreground"
+                      : "rounded-tr-none bg-primary text-primary-foreground",
+                  )}
+                >
+                  <FormattedMessage text={msg.content} markdown={msg.role === "assistant"} />
+                </div>
+                {msg.role === "assistant" && canSave && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    disabled={savedIndexes.includes(index)}
+                    onClick={() => {
+                      const question = messages[index - 1]?.content ?? "";
+                      onSaveExchange(question, msg.content);
+                      setSavedIndexes((prev) => [...prev, index]);
+                    }}
+                  >
+                    {savedIndexes.includes(index) ? (
+                      <>
+                        <Check className="mr-1 h-3.5 w-3.5" />
+                        Saved to log
+                      </>
+                    ) : (
+                      <>
+                        <BookmarkPlus className="mr-1 h-3.5 w-3.5" />
+                        Save to log
+                      </>
+                    )}
+                  </Button>
                 )}
-              >
-                <FormattedMessage text={msg.content} markdown={msg.role === "assistant"} />
               </div>
+
             </div>
           ))}
           {loading && (
@@ -443,6 +486,7 @@ function TroubleshootingPage() {
   const [pending, setPending] = useState<PendingMessage | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const track = useTrackEvent();
+  const { addEntry, signedIn } = useTroubleshootingLog();
 
   const askAi = (symptom: string) => {
     const text = `I'm having ${symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}. What should I check and fix?`;
@@ -458,6 +502,30 @@ function TroubleshootingPage() {
     });
   };
 
+  const saveSymptom = (symptom: string) => {
+    addEntry({
+      kind: "symptom",
+      title: symptom,
+      printerId: settings.selectedPrinterId,
+      filamentType: settings.selectedFilamentType,
+    });
+    toast.success("Saved to your troubleshooting log");
+  };
+
+  const saveExchange = (question: string, answer: string) => {
+    addEntry({
+      kind: "chat",
+      title: question.slice(0, 120) || "AI conversation",
+      printerId: settings.selectedPrinterId,
+      filamentType: settings.selectedFilamentType,
+      question,
+      answer,
+    });
+    toast.success("Saved to your troubleshooting log");
+  };
+
+
+
 
   return (
     <AppShell>
@@ -471,6 +539,15 @@ function TroubleshootingPage() {
               Browse symptoms, or ask the AI for personalized help.
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/history">
+                <History className="mr-1.5 h-4 w-4" />
+                My history
+              </Link>
+            </Button>
+          </div>
+
           <PrinterSelector
             value={settings.selectedPrinterId}
             onChange={setSelectedPrinterId}
@@ -510,14 +587,26 @@ function TroubleshootingPage() {
                           ))}
                         </ol>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => askAi(topic.symptom)}
-                      >
-                        <Sparkles className="mr-1.5 h-4 w-4" />
-                        Ask the AI about this
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => askAi(topic.symptom)}
+                        >
+                          <Sparkles className="mr-1.5 h-4 w-4" />
+                          Ask the AI about this
+                        </Button>
+                        {signedIn && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => saveSymptom(topic.symptom)}
+                          >
+                            <BookmarkPlus className="mr-1.5 h-4 w-4" />
+                            Save to log
+                          </Button>
+                        )}
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
                 );
@@ -526,8 +615,13 @@ function TroubleshootingPage() {
           </div>
 
           <div ref={chatRef} className="lg:sticky lg:top-24 lg:self-start">
-            <ChatPanel pending={pending} />
+            <ChatPanel
+              pending={pending}
+              canSave={signedIn}
+              onSaveExchange={saveExchange}
+            />
           </div>
+
 
         </div>
       </div>
