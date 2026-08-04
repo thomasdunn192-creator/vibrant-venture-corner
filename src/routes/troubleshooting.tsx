@@ -539,6 +539,15 @@ function TroubleshootingPage() {
               Browse symptoms, or ask the AI for personalized help.
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/history">
+                <History className="mr-1.5 h-4 w-4" />
+                My history
+              </Link>
+            </Button>
+          </div>
+
           <PrinterSelector
             value={settings.selectedPrinterId}
             onChange={setSelectedPrinterId}
