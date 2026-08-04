@@ -14,7 +14,11 @@ import {
   Paintbrush,
   AlertTriangle,
   Grid3X3,
+  BookmarkPlus,
+  Check,
+  History,
 } from "lucide-react";
+
 
 import { AppShell } from "@/components/app-shell";
 import { PrinterSelector } from "@/components/printer-selector";
