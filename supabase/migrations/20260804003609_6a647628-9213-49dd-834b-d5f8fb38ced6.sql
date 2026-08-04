@@ -1,0 +1,4 @@
+-- Intentionally no INSERT/UPDATE/DELETE policy on usage_events: all writes are performed server-side
+-- by the trackEvent server function using the service-role client, which bypasses RLS.
+-- Do not add a client-facing INSERT policy; events must be attributed and validated server-side.
+COMMENT ON POLICY "Admins can view usage events" ON public.usage_events IS 'Intentionally no INSERT/UPDATE/DELETE policy: all writes are performed server-side by the trackEvent server function using the service-role client, which bypasses RLS. Do not add a client-facing INSERT policy; events must be attributed and validated server-side.';
