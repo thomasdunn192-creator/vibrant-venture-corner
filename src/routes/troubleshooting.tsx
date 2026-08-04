@@ -550,14 +550,26 @@ function TroubleshootingPage() {
                           ))}
                         </ol>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => askAi(topic.symptom)}
-                      >
-                        <Sparkles className="mr-1.5 h-4 w-4" />
-                        Ask the AI about this
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => askAi(topic.symptom)}
+                        >
+                          <Sparkles className="mr-1.5 h-4 w-4" />
+                          Ask the AI about this
+                        </Button>
+                        {signedIn && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => saveSymptom(topic.symptom)}
+                          >
+                            <BookmarkPlus className="mr-1.5 h-4 w-4" />
+                            Save to log
+                          </Button>
+                        )}
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
                 );
@@ -566,8 +578,13 @@ function TroubleshootingPage() {
           </div>
 
           <div ref={chatRef} className="lg:sticky lg:top-24 lg:self-start">
-            <ChatPanel pending={pending} />
+            <ChatPanel
+              pending={pending}
+              canSave={signedIn}
+              onSaveExchange={saveExchange}
+            />
           </div>
+
 
         </div>
       </div>
