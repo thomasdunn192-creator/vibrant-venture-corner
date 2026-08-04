@@ -45,7 +45,10 @@ import { MAX_MESSAGE_LENGTH } from "@/lib/ai-limits";
 import { getPrinterById } from "@/lib/printers";
 import { getProfile } from "@/lib/settings";
 import { useTrackEvent } from "@/lib/analytics";
+import { useTroubleshootingLog } from "@/lib/history";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/troubleshooting")({
   component: TroubleshootingPage,
