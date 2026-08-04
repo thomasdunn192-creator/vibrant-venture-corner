@@ -7,19 +7,15 @@ import { BarChart3, RefreshCw } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
-import { getUsageMetrics, type CountRow } from "@/lib/analytics.functions";
+import { getUsageMetrics, isCurrentUserAdmin, type CountRow } from "@/lib/analytics.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
   beforeLoad: async ({ context }) => {
     const userId = (context as { user?: { id: string } }).user?.id;
     if (!userId) throw redirect({ to: "/auth" });
-    const { data: isAdmin, error } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (error || !isAdmin) throw redirect({ to: "/" });
+    const { isAdmin } = await isCurrentUserAdmin().catch(() => ({ isAdmin: false }));
+    if (!isAdmin) throw redirect({ to: "/" });
   },
   component: AdminPage,
   head: () => ({
