@@ -632,7 +632,7 @@ function TroubleshootingPage() {
           <div ref={chatRef} className="lg:sticky lg:top-24 lg:self-start">
             <ChatPanel
               pending={pending}
-              canSave={signedIn}
+              signedIn={signedIn}
               onSaveExchange={saveExchange}
             />
           </div>
