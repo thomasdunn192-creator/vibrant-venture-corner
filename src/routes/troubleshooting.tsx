@@ -499,9 +499,16 @@ function FormattedMessage({ text, markdown }: { text: string; markdown?: boolean
 function TroubleshootingPage() {
   const { settings, setSelectedPrinterId } = useAppSettingsContext();
   const [pending, setPending] = useState<PendingMessage | null>(null);
+  const [guestSavedSymptom, setGuestSavedSymptom] = useState<string | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const track = useTrackEvent();
   const { addEntry, signedIn } = useTroubleshootingLog();
+
+  useEffect(() => {
+    if (guestSavedSymptom === null) return;
+    const t = setTimeout(() => setGuestSavedSymptom(null), 5000);
+    return () => clearTimeout(t);
+  }, [guestSavedSymptom]);
 
   const askAi = (symptom: string) => {
     const text = `I'm having ${symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}. What should I check and fix?`;
@@ -524,6 +531,7 @@ function TroubleshootingPage() {
       printerId: settings.selectedPrinterId,
       filamentType: settings.selectedFilamentType,
     });
+    if (!signedIn) setGuestSavedSymptom(symptom);
     toast.success("Saved to your troubleshooting log");
   };
 
