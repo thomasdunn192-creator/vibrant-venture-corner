@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Printer } from "lucide-react";
 
 import { lovable } from "@/integrations/lovable/index";
@@ -16,12 +16,14 @@ export const Route = createFileRoute("/auth")({
       { title: "Sign in — PrintOps" },
       {
         name: "description",
-        content: "Sign in to PrintOps to access admin usage metrics for your 3D printing companion app.",
+        content:
+          "Sign in to PrintOps to sync your printer settings and troubleshooting history across devices — or keep browsing as a guest.",
       },
       { property: "og:title", content: "Sign in — PrintOps" },
       {
         property: "og:description",
-        content: "Sign in to PrintOps to access admin usage metrics for your 3D printing companion app.",
+        content:
+          "Sign in to PrintOps to sync your printer settings and troubleshooting history across devices — or keep browsing as a guest.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -38,15 +40,24 @@ function AuthPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const goBack = useCallback(() => {
+    if (router.history.canGoBack()) {
+      router.history.back();
+    } else {
+      void router.navigate({ to: "/", replace: true });
+    }
+  }, [router]);
+
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
-      if (data.session) void router.navigate({ to: "/admin", replace: true });
+      if (data.session) goBack();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) void router.navigate({ to: "/admin", replace: true });
+      if (session) goBack();
     });
     return () => sub.subscription.unsubscribe();
-  }, [router]);
+  }, [goBack]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
