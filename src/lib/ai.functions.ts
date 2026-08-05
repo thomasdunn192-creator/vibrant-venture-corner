@@ -28,7 +28,7 @@ const chatInputSchema = z.object({
       role: z.enum(["system", "user", "assistant"]),
       content: z.string().max(MAX_MESSAGE_LENGTH),
     }),
-  ),
+  ).max(5),
   topic: z.string().optional(),
 });
 
