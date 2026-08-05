@@ -390,30 +390,38 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
                 >
                   <FormattedMessage text={msg.content} markdown={msg.role === "assistant"} />
                 </div>
-                {msg.role === "assistant" && canSave && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-muted-foreground"
-                    disabled={savedIndexes.includes(index)}
-                    onClick={() => {
-                      const question = messages[index - 1]?.content ?? "";
-                      onSaveExchange(question, msg.content);
-                      setSavedIndexes((prev) => [...prev, index]);
-                    }}
-                  >
-                    {savedIndexes.includes(index) ? (
-                      <>
-                        <Check className="mr-1 h-3.5 w-3.5" />
-                        Saved to log
-                      </>
-                    ) : (
-                      <>
-                        <BookmarkPlus className="mr-1 h-3.5 w-3.5" />
-                        Save to log
-                      </>
+                {msg.role === "assistant" && (
+                  <div className="space-y-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground"
+                      disabled={savedIndexes.includes(index)}
+                      onClick={() => {
+                        const question = messages[index - 1]?.content ?? "";
+                        onSaveExchange(question, msg.content);
+                        setSavedIndexes((prev) => [...prev, index]);
+                        if (!signedIn) setGuestNotifiedIndex(index);
+                      }}
+                    >
+                      {savedIndexes.includes(index) ? (
+                        <>
+                          <Check className="mr-1 h-3.5 w-3.5" />
+                          Saved to log
+                        </>
+                      ) : (
+                        <>
+                          <BookmarkPlus className="mr-1 h-3.5 w-3.5" />
+                          Save to log
+                        </>
+                      )}
+                    </Button>
+                    {!signedIn && savedIndexes.includes(index) && guestNotifiedIndex === index && (
+                      <p className="text-xs text-muted-foreground">
+                        Saved on this device — sign in to keep it synced across devices.
+                      </p>
                     )}
-                  </Button>
+                  </div>
                 )}
               </div>
 
