@@ -252,7 +252,7 @@ interface PendingMessage {
 
 interface ChatPanelProps {
   pending: PendingMessage | null;
-  canSave: boolean;
+  signedIn: boolean;
   onSaveExchange: (question: string, answer: string) => void;
 }
 
