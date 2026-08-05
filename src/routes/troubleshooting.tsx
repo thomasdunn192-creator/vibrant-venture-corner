@@ -273,11 +273,14 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
   const sendingRef = useRef(false);
 
   useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  useEffect(() => {
     if (guestNotifiedIndex === null) return;
     const t = setTimeout(() => setGuestNotifiedIndex(null), 5000);
     return () => clearTimeout(t);
   }, [guestNotifiedIndex]);
-  }, [messages, loading]);
 
 
   const send = useCallback(
