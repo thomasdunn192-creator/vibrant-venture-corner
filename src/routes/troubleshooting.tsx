@@ -252,17 +252,18 @@ interface PendingMessage {
 
 interface ChatPanelProps {
   pending: PendingMessage | null;
-  canSave: boolean;
+  signedIn: boolean;
   onSaveExchange: (question: string, answer: string) => void;
 }
 
-function ChatPanel({ pending, canSave, onSaveExchange }: ChatPanelProps) {
+function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
   const { settings } = useAppSettingsContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedIndexes, setSavedIndexes] = useState<number[]>([]);
+  const [guestNotifiedIndex, setGuestNotifiedIndex] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const chat = useServerFn(chatWithAssistant);
   const track = useTrackEvent();
@@ -274,6 +275,12 @@ function ChatPanel({ pending, canSave, onSaveExchange }: ChatPanelProps) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (guestNotifiedIndex === null) return;
+    const t = setTimeout(() => setGuestNotifiedIndex(null), 5000);
+    return () => clearTimeout(t);
+  }, [guestNotifiedIndex]);
 
 
   const send = useCallback(
@@ -383,30 +390,38 @@ function ChatPanel({ pending, canSave, onSaveExchange }: ChatPanelProps) {
                 >
                   <FormattedMessage text={msg.content} markdown={msg.role === "assistant"} />
                 </div>
-                {msg.role === "assistant" && canSave && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-muted-foreground"
-                    disabled={savedIndexes.includes(index)}
-                    onClick={() => {
-                      const question = messages[index - 1]?.content ?? "";
-                      onSaveExchange(question, msg.content);
-                      setSavedIndexes((prev) => [...prev, index]);
-                    }}
-                  >
-                    {savedIndexes.includes(index) ? (
-                      <>
-                        <Check className="mr-1 h-3.5 w-3.5" />
-                        Saved to log
-                      </>
-                    ) : (
-                      <>
-                        <BookmarkPlus className="mr-1 h-3.5 w-3.5" />
-                        Save to log
-                      </>
+                {msg.role === "assistant" && (
+                  <div className="space-y-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground"
+                      disabled={savedIndexes.includes(index)}
+                      onClick={() => {
+                        const question = messages[index - 1]?.content ?? "";
+                        onSaveExchange(question, msg.content);
+                        setSavedIndexes((prev) => [...prev, index]);
+                        if (!signedIn) setGuestNotifiedIndex(index);
+                      }}
+                    >
+                      {savedIndexes.includes(index) ? (
+                        <>
+                          <Check className="mr-1 h-3.5 w-3.5" />
+                          Saved to log
+                        </>
+                      ) : (
+                        <>
+                          <BookmarkPlus className="mr-1 h-3.5 w-3.5" />
+                          Save to log
+                        </>
+                      )}
+                    </Button>
+                    {!signedIn && savedIndexes.includes(index) && guestNotifiedIndex === index && (
+                      <p className="text-xs text-muted-foreground">
+                        Saved on this device — sign in to keep it synced across devices.
+                      </p>
                     )}
-                  </Button>
+                  </div>
                 )}
               </div>
 
@@ -484,9 +499,16 @@ function FormattedMessage({ text, markdown }: { text: string; markdown?: boolean
 function TroubleshootingPage() {
   const { settings, setSelectedPrinterId } = useAppSettingsContext();
   const [pending, setPending] = useState<PendingMessage | null>(null);
+  const [guestSavedSymptom, setGuestSavedSymptom] = useState<string | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const track = useTrackEvent();
   const { addEntry, signedIn } = useTroubleshootingLog();
+
+  useEffect(() => {
+    if (guestSavedSymptom === null) return;
+    const t = setTimeout(() => setGuestSavedSymptom(null), 5000);
+    return () => clearTimeout(t);
+  }, [guestSavedSymptom]);
 
   const askAi = (symptom: string) => {
     const text = `I'm having ${symptom.toLowerCase()} on my ${getPrinterById(settings.selectedPrinterId).name}. What should I check and fix?`;
@@ -509,6 +531,7 @@ function TroubleshootingPage() {
       printerId: settings.selectedPrinterId,
       filamentType: settings.selectedFilamentType,
     });
+    if (!signedIn) setGuestSavedSymptom(symptom);
     toast.success("Saved to your troubleshooting log");
   };
 
@@ -596,15 +619,18 @@ function TroubleshootingPage() {
                           <Sparkles className="mr-1.5 h-4 w-4" />
                           Ask the AI about this
                         </Button>
-                        {signedIn && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => saveSymptom(topic.symptom)}
-                          >
-                            <BookmarkPlus className="mr-1.5 h-4 w-4" />
-                            Save to log
-                          </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => saveSymptom(topic.symptom)}
+                        >
+                          <BookmarkPlus className="mr-1.5 h-4 w-4" />
+                          Save to log
+                        </Button>
+                        {!signedIn && guestSavedSymptom === topic.symptom && (
+                          <p className="w-full text-xs text-muted-foreground">
+                            Saved on this device — sign in to keep it synced across devices.
+                          </p>
                         )}
                       </div>
                     </AccordionContent>
@@ -617,7 +643,7 @@ function TroubleshootingPage() {
           <div ref={chatRef} className="lg:sticky lg:top-24 lg:self-start">
             <ChatPanel
               pending={pending}
-              canSave={signedIn}
+              signedIn={signedIn}
               onSaveExchange={saveExchange}
             />
           </div>
