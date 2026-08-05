@@ -619,15 +619,23 @@ function TroubleshootingPage() {
                           <Sparkles className="mr-1.5 h-4 w-4" />
                           Ask the AI about this
                         </Button>
-                        {signedIn && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => saveSymptom(topic.symptom)}
-                          >
-                            <BookmarkPlus className="mr-1.5 h-4 w-4" />
-                            Save to log
-                          </Button>
+                        {signedIn && guestSavedSymptom === topic.symptom && (
+                          <p className="w-full text-xs text-muted-foreground">
+                            Saved on this device — sign in to keep it synced across devices.
+                          </p>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => saveSymptom(topic.symptom)}
+                        >
+                          <BookmarkPlus className="mr-1.5 h-4 w-4" />
+                          Save to log
+                        </Button>
+                        {!signedIn && guestSavedSymptom === topic.symptom && (
+                          <p className="w-full text-xs text-muted-foreground">
+                            Saved on this device — sign in to keep it synced across devices.
+                          </p>
                         )}
                       </div>
                     </AccordionContent>
