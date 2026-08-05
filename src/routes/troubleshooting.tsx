@@ -256,13 +256,14 @@ interface ChatPanelProps {
   onSaveExchange: (question: string, answer: string) => void;
 }
 
-function ChatPanel({ pending, canSave, onSaveExchange }: ChatPanelProps) {
+function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
   const { settings } = useAppSettingsContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedIndexes, setSavedIndexes] = useState<number[]>([]);
+  const [guestNotifiedIndex, setGuestNotifiedIndex] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const chat = useServerFn(chatWithAssistant);
   const track = useTrackEvent();
@@ -272,7 +273,10 @@ function ChatPanel({ pending, canSave, onSaveExchange }: ChatPanelProps) {
   const sendingRef = useRef(false);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (guestNotifiedIndex === null) return;
+    const t = setTimeout(() => setGuestNotifiedIndex(null), 5000);
+    return () => clearTimeout(t);
+  }, [guestNotifiedIndex]);
   }, [messages, loading]);
 
 
