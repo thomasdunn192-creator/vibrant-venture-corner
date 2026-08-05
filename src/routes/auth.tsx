@@ -158,7 +158,17 @@ function AuthPage() {
                 ? "Need an account? Sign up"
                 : "Already have an account? Sign in"}
             </button>
+            <div className="space-y-2 border-t pt-4">
+              <Button variant="ghost" className="w-full" onClick={goBack}>
+                Continue without signing in
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                The whole app works without an account. Your settings and troubleshooting log stay
+                on this device only — they won't be saved for next time or synced across devices.
+              </p>
+            </div>
           </CardContent>
+
         </Card>
       </div>
     </div>
