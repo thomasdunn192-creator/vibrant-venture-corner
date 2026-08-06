@@ -60,9 +60,18 @@ interface NumberFieldProps {
   unit: string;
   warning?: string | null;
   onChange: (value: number) => void;
+  onCommit?: (value: number) => void;
 }
 
-function NumberField({ label, value, defaultValue, unit, warning, onChange }: NumberFieldProps) {
+function NumberField({
+  label,
+  value,
+  defaultValue,
+  unit,
+  warning,
+  onChange,
+  onCommit,
+}: NumberFieldProps) {
   const modified = value !== defaultValue;
   return (
     <div className="space-y-1.5">
@@ -79,6 +88,7 @@ function NumberField({ label, value, defaultValue, unit, warning, onChange }: Nu
           type="number"
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
+          onBlur={(e) => onCommit?.(parseFloat(e.target.value))}
           className={cn(
             "pr-10",
             modified && "border-primary/50 ring-1 ring-primary/20",
