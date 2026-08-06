@@ -57,6 +57,7 @@ import { readFileAsDataUrl, uploadChatPhoto } from "@/lib/chat-photo";
 import { getPrinterById } from "@/lib/printers";
 import { getProfile } from "@/lib/settings";
 import { useTrackEvent } from "@/lib/analytics";
+import { categorizeChatQuestion } from "@/lib/chat-topic";
 import { useTroubleshootingLog } from "@/lib/history";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
