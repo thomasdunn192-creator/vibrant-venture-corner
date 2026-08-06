@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { PrinterSelector } from "@/components/printer-selector";
-import { AdBanner } from "@/components/ad-banner";
 import { useAppSettingsContext } from "@/components/app-settings-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
@@ -178,7 +177,6 @@ export function AppShell({ children }: AppShellProps) {
 
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
 
-      <AdBanner />
     </div>
   );
 }
