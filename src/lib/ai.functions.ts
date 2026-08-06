@@ -67,7 +67,7 @@ export const chatWithAssistant = createServerFn({ method: "POST" })
         role: "user" as const,
         content: [
           { type: "text" as const, text: message.content },
-          { type: "image" as const, image: new URL(data.imageDataUrl) },
+          { type: "image" as const, image: data.imageDataUrl },
         ],
       };
     });
