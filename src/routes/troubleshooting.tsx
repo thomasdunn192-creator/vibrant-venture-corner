@@ -247,12 +247,7 @@ const TOPICS: TroubleshootingTopic[] = [
   },
 ];
 
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  imagePreviewUrl?: string;
-  imagePath?: string;
-}
+type ChatMessage = ChatSessionMessage;
 
 interface PendingMessage {
   text: string;
@@ -267,14 +262,14 @@ interface ChatPanelProps {
 
 function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
   const { settings } = useAppSettingsContext();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { messages, setMessages, savedIndexes, setSavedIndexes } = useChatSession();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"uploading" | "analyzing">("analyzing");
 
   const [error, setError] = useState<string | null>(null);
-  const [savedIndexes, setSavedIndexes] = useState<number[]>([]);
   const [guestNotifiedIndex, setGuestNotifiedIndex] = useState<number | null>(null);
+
   const [photo, setPhoto] = useState<{ file: File; previewUrl: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
