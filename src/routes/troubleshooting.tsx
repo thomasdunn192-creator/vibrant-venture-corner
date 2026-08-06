@@ -17,6 +17,8 @@ import {
   BookmarkPlus,
   Check,
   History,
+  ImagePlus,
+  X,
 } from "lucide-react";
 
 
@@ -40,7 +42,12 @@ import {
 } from "@/components/ui/accordion";
 import { useServerFn } from "@tanstack/react-start";
 import { chatWithAssistant } from "@/lib/ai.functions";
-import { MAX_MESSAGE_LENGTH } from "@/lib/ai-limits";
+import {
+  ACCEPTED_IMAGE_ACCEPT_ATTR,
+  MAX_MESSAGE_LENGTH,
+  validateImageFile,
+} from "@/lib/ai-limits";
+import { readFileAsDataUrl, uploadChatPhoto } from "@/lib/chat-photo";
 
 import { getPrinterById } from "@/lib/printers";
 import { getProfile } from "@/lib/settings";
@@ -243,6 +250,8 @@ const TOPICS: TroubleshootingTopic[] = [
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  imagePreviewUrl?: string;
+  imagePath?: string;
 }
 
 interface PendingMessage {
@@ -253,7 +262,7 @@ interface PendingMessage {
 interface ChatPanelProps {
   pending: PendingMessage | null;
   signedIn: boolean;
-  onSaveExchange: (question: string, answer: string) => void;
+  onSaveExchange: (question: string, answer: string, imagePaths: string[]) => void;
 }
 
 function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
@@ -264,12 +273,16 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [savedIndexes, setSavedIndexes] = useState<number[]>([]);
   const [guestNotifiedIndex, setGuestNotifiedIndex] = useState<number | null>(null);
+  const [photo, setPhoto] = useState<{ file: File; previewUrl: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const chat = useServerFn(chatWithAssistant);
   const track = useTrackEvent();
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const lastNonce = useRef<number | null>(null);
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  messagesRef.current = messages;
   const sendingRef = useRef(false);
 
   useEffect(() => {
@@ -284,13 +297,22 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
 
 
   const send = useCallback(
-    async (userText: string) => {
-      if (!userText.trim() || sendingRef.current) return;
+    async (userText: string, attached?: { file: File; previewUrl: string } | null) => {
+      if ((!userText.trim() && !attached) || sendingRef.current) return;
       sendingRef.current = true;
       const current = settingsRef.current;
       setInput("");
       setError(null);
-      setMessages((prev) => [...prev, { role: "user", content: userText }]);
+      setPhoto(null);
+      const userIndex = messagesRef.current.length;
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "user",
+          content: userText,
+          ...(attached ? { imagePreviewUrl: attached.previewUrl } : {}),
+        },
+      ]);
       setLoading(true);
       track({
         eventName: "chat_message_sent",
@@ -299,6 +321,20 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
       });
 
       try {
+        let imageDataUrl: string | undefined;
+        if (attached) {
+          imageDataUrl = await readFileAsDataUrl(attached.file);
+          try {
+            const path = await uploadChatPhoto(attached.file);
+            if (path) {
+              setMessages((prev) =>
+                prev.map((m, i) => (i === userIndex ? { ...m, imagePath: path } : m)),
+              );
+            }
+          } catch {
+            // Storing the photo is best-effort; the AI still gets it this turn.
+          }
+        }
         const profile = getProfile(current, current.selectedPrinterId, current.selectedFilamentType);
         const result = await chat({
           data: {
@@ -318,6 +354,7 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
             },
             messages: [{ role: "user", content: userText }],
             topic: userText,
+            ...(imageDataUrl ? { imageDataUrl } : {}),
           },
         });
         setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
@@ -339,7 +376,21 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
   }, [pending, send]);
 
   const handleSend = () => {
-    void send(input.trim());
+    void send(input.trim(), photo);
+  };
+
+  const handlePickPhoto = (file: File | undefined) => {
+    if (!file) return;
+    const problem = validateImageFile(file);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setError(null);
+    setPhoto((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return { file, previewUrl: URL.createObjectURL(file) };
+    });
   };
 
 
@@ -388,6 +439,13 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
                       : "rounded-tr-none bg-primary text-primary-foreground",
                   )}
                 >
+                  {msg.imagePreviewUrl && (
+                    <img
+                      src={msg.imagePreviewUrl}
+                      alt="Photo of the user's print attached to this message"
+                      className="mb-2 max-h-48 w-auto rounded-lg border border-border/40 object-cover"
+                    />
+                  )}
                   <FormattedMessage text={msg.content} markdown={msg.role === "assistant"} />
                 </div>
                 {msg.role === "assistant" && (
@@ -398,8 +456,13 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
                       className="h-7 px-2 text-xs text-muted-foreground"
                       disabled={savedIndexes.includes(index)}
                       onClick={() => {
-                        const question = messages[index - 1]?.content ?? "";
-                        onSaveExchange(question, msg.content);
+                        const prior = messages[index - 1];
+                        const question = prior?.content ?? "";
+                        onSaveExchange(
+                          question,
+                          msg.content,
+                          prior?.imagePath ? [prior.imagePath] : [],
+                        );
                         setSavedIndexes((prev) => [...prev, index]);
                         if (!signedIn) setGuestNotifiedIndex(index);
                       }}
@@ -445,7 +508,59 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
           <div ref={bottomRef} />
         </div>
 
+        {photo && (
+          <div className="mt-4 flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-2">
+            <img
+              src={photo.previewUrl}
+              alt="Selected print photo preview"
+              className="h-14 w-14 rounded-md object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-foreground">{photo.file.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {(photo.file.size / (1024 * 1024)).toFixed(1)} MB ·{" "}
+                {signedIn
+                  ? "saved to your account with this conversation"
+                  : "used for this message only, not stored"}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label="Remove selected photo"
+              onClick={() => {
+                URL.revokeObjectURL(photo.previewUrl);
+                setPhoto(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         <div className="mt-4 flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_IMAGE_ACCEPT_ATTR}
+            className="hidden"
+            onChange={(e) => {
+              handlePickPhoto(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Attach a photo of your print"
+            title="Attach a photo of your print"
+            disabled={loading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImagePlus className="h-4 w-4" />
+          </Button>
           <Input
             placeholder="e.g. Why is my first layer not sticking?"
             value={input}
@@ -454,7 +569,7 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             className="flex-1"
           />
-          <Button onClick={handleSend} disabled={loading || !input.trim()} aria-label="Send message">
+          <Button onClick={handleSend} disabled={loading || (!input.trim() && !photo)} aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>
         </div>
@@ -535,9 +650,10 @@ function TroubleshootingPage() {
     toast.success("Saved to your troubleshooting log");
   };
 
-  const saveExchange = (question: string, answer: string) => {
+  const saveExchange = (question: string, answer: string, imagePaths: string[] = []) => {
     addEntry({
       kind: "chat",
+      ...(imagePaths.length > 0 ? { imagePaths } : {}),
       title: question.slice(0, 120) || "AI conversation",
       printerId: settings.selectedPrinterId,
       filamentType: settings.selectedFilamentType,
