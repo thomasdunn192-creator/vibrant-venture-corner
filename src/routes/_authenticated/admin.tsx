@@ -36,6 +36,22 @@ export const Route = createFileRoute("/_authenticated/admin")({
   }),
 });
 
+/**
+ * Estimated AI cost per token, in USD, for google/gemini-2.5-flash.
+ * UPDATE THESE if Gemini pricing changes — otherwise the cost estimate below
+ * silently goes stale. Values are per single token (price per 1M / 1_000_000).
+ */
+const PRICE_PER_INPUT_TOKEN_USD = 0.30 / 1_000_000;
+const PRICE_PER_OUTPUT_TOKEN_USD = 2.50 / 1_000_000;
+/** Blended rate used for totals, since we aggregate total tokens per response. */
+const BLENDED_PRICE_PER_TOKEN_USD =
+  (PRICE_PER_INPUT_TOKEN_USD + PRICE_PER_OUTPUT_TOKEN_USD) / 2;
+
+function estimateCostUsd(tokens: number): string {
+  const cost = tokens * BLENDED_PRICE_PER_TOKEN_USD;
+  return cost < 0.01 && cost > 0 ? "<$0.01" : `$${cost.toFixed(2)}`;
+}
+
 const RANGES = [
   { value: "24h", label: "Last 24h" },
   { value: "7d", label: "Last 7 days" },
@@ -118,7 +134,46 @@ function AdminPage() {
             </div>
 
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">AI token usage &amp; estimated cost</CardTitle>
+                <CardDescription>
+                  Tokens reported by the AI for each chat response. Cost is an estimate at a blended
+                  Gemini rate — update the price constants in this file if pricing changes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-3">
+                {(
+                  [
+                    ["Today", data.tokens.today],
+                    ["This week", data.tokens.week],
+                    ["All time", data.tokens.allTime],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label}>
+                    <p className="text-sm text-muted-foreground">{label}</p>
+                    <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
+                      {value.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      ≈ {estimateCostUsd(value)} estimated
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
             <div className="grid gap-6 lg:grid-cols-2">
+              <BreakdownCard
+                title="Chat volume by day"
+                description="AI chat messages sent per day (last 14 days)"
+                rows={data.chatVolumeByDay}
+              />
+              <BreakdownCard
+                title="Chat volume by week"
+                description="AI chat messages sent per week (last 8 weeks)"
+                rows={data.chatVolumeByWeek}
+              />
               <BreakdownCard
                 title="Page views"
                 description="Which pages get used most"
