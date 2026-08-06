@@ -105,7 +105,10 @@ export const getUsageMetrics = createServerFn({ method: "POST" })
     const perPrinter = new Map<string, number>();
     const perFilament = new Map<string, number>();
     const perTopic = new Map<string, number>();
+    const perEditedField = new Map<string, number>();
     let chatMessages = 0;
+    let resets = 0;
+    let resetAlls = 0;
 
     for (const row of events) {
       if (row.visitor_id) visitors.add(row.visitor_id);
