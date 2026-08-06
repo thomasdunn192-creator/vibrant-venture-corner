@@ -127,7 +127,12 @@ export const getUsageMetrics = createServerFn({ method: "POST" })
       if (row.event_name === "page_view" && row.page_path) bump(perPage, row.page_path);
       if (row.printer_id) bump(perPrinter, row.printer_id);
       if (row.filament_type) bump(perFilament, row.filament_type);
-      if (row.event_name === "chat_message_sent") chatMessages += 1;
+      if (row.event_name === "chat_message_sent") {
+        chatMessages += 1;
+        // Free-typed questions are categorized client-side; no raw text is stored.
+        const detail = row.detail as { category?: string } | null;
+        if (detail?.category) bump(perTopic, detail.category);
+      }
       if (row.event_name === "troubleshooting_topic_opened" || row.event_name === "ask_ai_pressed") {
         const detail = row.detail as { topic?: string } | null;
         if (detail?.topic) bump(perTopic, detail.topic);

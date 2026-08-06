@@ -57,6 +57,7 @@ import { readFileAsDataUrl, uploadChatPhoto } from "@/lib/chat-photo";
 import { getPrinterById } from "@/lib/printers";
 import { getProfile } from "@/lib/settings";
 import { useTrackEvent } from "@/lib/analytics";
+import { categorizeChatQuestion } from "@/lib/chat-topic";
 import { useTroubleshootingLog } from "@/lib/history";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -321,6 +322,8 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
         eventName: "chat_message_sent",
         printerId: current.selectedPrinterId,
         filamentType: current.selectedFilamentType,
+        // Category only — never the raw question text.
+        detail: { category: categorizeChatQuestion(userText) },
       });
 
       try {
