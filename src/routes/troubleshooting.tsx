@@ -501,7 +501,7 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
                 <Bot className="h-4 w-4" />
               </div>
               <div className="rounded-2xl rounded-tl-none bg-muted px-4 py-2 text-sm text-muted-foreground">
-                Thinking…
+                {status === "uploading" ? "Uploading photo…" : "Analyzing…"}
               </div>
             </div>
           )}
