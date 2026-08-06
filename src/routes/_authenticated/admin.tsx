@@ -2,12 +2,13 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { BarChart3, RefreshCw } from "lucide-react";
+import { BarChart3, Download, RefreshCw } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getUsageMetrics, isCurrentUserAdmin, type CountRow } from "@/lib/analytics.functions";
+import { getUsageMetrics, isCurrentUserAdmin, type CountRow, type UsageMetrics } from "@/lib/analytics.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -59,6 +60,59 @@ const RANGES = [
   { value: "all", label: "All time" },
 ] as const;
 
+function buildCsv(metrics: UsageMetrics, range: string): string {
+  const rows: string[] = [];
+  rows.push(`PrintOps usage metrics — ${range}`);
+  rows.push("");
+
+  rows.push(`Summary`);
+  rows.push(`Events,${metrics.totalEvents}`);
+  rows.push(`Unique visitors,${metrics.uniqueVisitors}`);
+  rows.push(`Signed-in users,${metrics.signedInUsers}`);
+  rows.push(`AI chat messages,${metrics.chatMessages}`);
+  rows.push(`Filament resets,${metrics.resets}`);
+  rows.push(`Printer-wide resets,${metrics.resetAlls}`);
+  rows.push("");
+
+  rows.push(`AI token usage`);
+  rows.push(`Today,${metrics.tokens.today},${estimateCostUsd(metrics.tokens.today)}`);
+  rows.push(`This week,${metrics.tokens.week},${estimateCostUsd(metrics.tokens.week)}`);
+  rows.push(`All time,${metrics.tokens.allTime},${estimateCostUsd(metrics.tokens.allTime)}`);
+  rows.push("");
+
+  const section = (title: string, data: CountRow[]) => {
+    rows.push(title);
+    rows.push("Label,Count");
+    for (const row of data) rows.push(`"${row.label}",${row.count}`);
+    rows.push("");
+  };
+
+  section("Page views", metrics.byPage);
+  section("Events", metrics.byEvent);
+  section("Printers", metrics.byPrinter);
+  section("Filaments", metrics.byFilament);
+  section("Troubleshooting topics", metrics.byTopic);
+  section("Most edited defaults", metrics.byEditedField);
+  section("Activity by day", metrics.eventsPerDay);
+
+  return rows.join("\n");
+}
+
+function downloadCsv(metrics: UsageMetrics, range: string) {
+  const csv = buildCsv(metrics, range);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `printops-metrics-${range}-${date}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+
 function AdminPage() {
   const [range, setRange] = useState<(typeof RANGES)[number]["value"]>("7d");
   const fetchMetrics = useServerFn(getUsageMetrics);
@@ -94,6 +148,15 @@ function AdminPage() {
                 {r.label}
               </Button>
             ))}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => data && downloadCsv(data, range)}
+              disabled={!data}
+              aria-label="Download CSV"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => void refetch()} aria-label="Refresh">
               <RefreshCw className={isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
             </Button>
