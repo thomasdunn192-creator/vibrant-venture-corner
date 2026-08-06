@@ -322,13 +322,11 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
 
       try {
         let imageDataUrl: string | undefined;
-        let storedPath: string | undefined;
         if (attached) {
           imageDataUrl = await readFileAsDataUrl(attached.file);
           try {
             const path = await uploadChatPhoto(attached.file);
             if (path) {
-              storedPath = path;
               setMessages((prev) =>
                 prev.map((m, i) => (i === userIndex ? { ...m, imagePath: path } : m)),
               );
@@ -337,7 +335,6 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
             // Storing the photo is best-effort; the AI still gets it this turn.
           }
         }
-        void storedPath;
         const profile = getProfile(current, current.selectedPrinterId, current.selectedFilamentType);
         const result = await chat({
           data: {
@@ -521,7 +518,10 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium text-foreground">{photo.file.name}</p>
               <p className="text-xs text-muted-foreground">
-                {(photo.file.size / (1024 * 1024)).toFixed(1)} MB · sent with your next message
+                {(photo.file.size / (1024 * 1024)).toFixed(1)} MB ·{" "}
+                {signedIn
+                  ? "saved to your account with this conversation"
+                  : "used for this message only, not stored"}
               </p>
             </div>
             <Button
