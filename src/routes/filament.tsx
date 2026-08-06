@@ -144,6 +144,34 @@ function FilamentPage() {
     updateProfile(settings.selectedPrinterId, filament, partial);
   };
 
+  /** Fires on blur only, and only when the committed value differs from default. */
+  const commitField = (field: keyof FilamentProfile, value: number, defaultValue: number) => {
+    if (!Number.isFinite(value) || value === defaultValue) return;
+    track({
+      eventName: "filament_field_edited",
+      printerId: settings.selectedPrinterId,
+      filamentType: filament,
+      detail: { field: field as string },
+    });
+  };
+
+  const handleResetProfile = () => {
+    resetProfile(settings.selectedPrinterId, filament);
+    track({
+      eventName: "filament_reset",
+      printerId: settings.selectedPrinterId,
+      filamentType: filament,
+    });
+  };
+
+  const handleResetAll = () => {
+    resetAllProfilesForPrinter(settings.selectedPrinterId);
+    track({
+      eventName: "filament_reset_all",
+      printerId: settings.selectedPrinterId,
+    });
+  };
+
   const handleFilamentChange = (value: FilamentType) => {
     setSelectedFilamentType(value);
     track({
