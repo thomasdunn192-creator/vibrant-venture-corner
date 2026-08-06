@@ -25,6 +25,11 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { PrinterSelector } from "@/components/printer-selector";
 import { useAppSettingsContext } from "@/components/app-settings-provider";
+import {
+  useChatSession,
+  type ChatSessionMessage,
+} from "@/components/chat-session-provider";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
