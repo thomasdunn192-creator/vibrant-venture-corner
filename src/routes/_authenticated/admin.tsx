@@ -108,12 +108,15 @@ function AdminPage() {
 
         {data && (
           <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <StatCard label="Events" value={data.totalEvents} />
               <StatCard label="Unique visitors" value={data.uniqueVisitors} />
               <StatCard label="Signed-in users" value={data.signedInUsers} />
               <StatCard label="AI chat messages" value={data.chatMessages} />
+              <StatCard label="Filament resets" value={data.resets} />
+              <StatCard label="Printer-wide resets" value={data.resetAlls} />
             </div>
+
 
             <div className="grid gap-6 lg:grid-cols-2">
               <BreakdownCard
@@ -141,6 +144,12 @@ function AdminPage() {
                 description="Symptoms opened or sent to the AI"
                 rows={data.byTopic}
               />
+              <BreakdownCard
+                title="Most edited defaults"
+                description="Printer · filament · field changed away from default"
+                rows={data.byEditedField}
+              />
+
               <BreakdownCard
                 title="Activity by day"
                 description="Events per day"

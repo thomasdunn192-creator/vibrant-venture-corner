@@ -60,9 +60,18 @@ interface NumberFieldProps {
   unit: string;
   warning?: string | null;
   onChange: (value: number) => void;
+  onCommit?: (value: number) => void;
 }
 
-function NumberField({ label, value, defaultValue, unit, warning, onChange }: NumberFieldProps) {
+function NumberField({
+  label,
+  value,
+  defaultValue,
+  unit,
+  warning,
+  onChange,
+  onCommit,
+}: NumberFieldProps) {
   const modified = value !== defaultValue;
   return (
     <div className="space-y-1.5">
@@ -79,6 +88,7 @@ function NumberField({ label, value, defaultValue, unit, warning, onChange }: Nu
           type="number"
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
+          onBlur={(e) => onCommit?.(parseFloat(e.target.value))}
           className={cn(
             "pr-10",
             modified && "border-primary/50 ring-1 ring-primary/20",
@@ -132,6 +142,34 @@ function FilamentPage() {
 
   const patch = (partial: Partial<FilamentProfile>) => {
     updateProfile(settings.selectedPrinterId, filament, partial);
+  };
+
+  /** Fires on blur only, and only when the committed value differs from default. */
+  const commitField = (field: keyof FilamentProfile, value: number, defaultValue: number) => {
+    if (!Number.isFinite(value) || value === defaultValue) return;
+    track({
+      eventName: "filament_field_edited",
+      printerId: settings.selectedPrinterId,
+      filamentType: filament,
+      detail: { field: field as string },
+    });
+  };
+
+  const handleResetProfile = () => {
+    resetProfile(settings.selectedPrinterId, filament);
+    track({
+      eventName: "filament_reset",
+      printerId: settings.selectedPrinterId,
+      filamentType: filament,
+    });
+  };
+
+  const handleResetAll = () => {
+    resetAllProfilesForPrinter(settings.selectedPrinterId);
+    track({
+      eventName: "filament_reset_all",
+      printerId: settings.selectedPrinterId,
+    });
   };
 
   const handleFilamentChange = (value: FilamentType) => {
@@ -230,11 +268,7 @@ function FilamentPage() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => resetProfile(settings.selectedPrinterId, filament)}
-              >
+              <Button variant="outline" size="sm" onClick={handleResetProfile}>
                 <RotateCcw className="mr-1.5 h-4 w-4" />
                 Reset this filament
               </Button>
@@ -245,9 +279,7 @@ function FilamentPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => resetAllProfilesForPrinter(settings.selectedPrinterId)}
-                  >
+                  <DropdownMenuItem onClick={handleResetAll}>
                     Reset all filaments for {printer.shortName}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -270,6 +302,7 @@ function FilamentPage() {
                 unit="°C"
                 warning={nozzleWarning}
                 onChange={(v) => patch({ nozzleTempC: { ...profile.nozzleTempC, current: v } })}
+                onCommit={(v) => commitField("nozzleTempC", v, profile.nozzleTempC.default)}
               />
               <NumberField
                 label="Bed temperature"
@@ -278,6 +311,7 @@ function FilamentPage() {
                 unit="°C"
                 warning={bedWarning}
                 onChange={(v) => patch({ bedTempC: { ...profile.bedTempC, current: v } })}
+                onCommit={(v) => commitField("bedTempC", v, profile.bedTempC.default)}
               />
 
               <NumberField
@@ -286,6 +320,7 @@ function FilamentPage() {
                 defaultValue={profile.printSpeedMmS.default}
                 unit="mm/s"
                 onChange={(v) => patch({ printSpeedMmS: { ...profile.printSpeedMmS, current: v } })}
+                onCommit={(v) => commitField("printSpeedMmS", v, profile.printSpeedMmS.default)}
               />
               <NumberField
                 label="Fan speed"
@@ -293,6 +328,7 @@ function FilamentPage() {
                 defaultValue={profile.fanSpeedPercent.default}
                 unit="%"
                 onChange={(v) => patch({ fanSpeedPercent: { ...profile.fanSpeedPercent, current: v } })}
+                onCommit={(v) => commitField("fanSpeedPercent", v, profile.fanSpeedPercent.default)}
               />
               <NumberField
                 label="Retraction distance"
@@ -302,6 +338,9 @@ function FilamentPage() {
                 onChange={(v) =>
                   patch({ retractionDistanceMm: { ...profile.retractionDistanceMm, current: v } })
                 }
+                onCommit={(v) =>
+                  commitField("retractionDistanceMm", v, profile.retractionDistanceMm.default)
+                }
               />
               <NumberField
                 label="Retraction speed"
@@ -310,6 +349,9 @@ function FilamentPage() {
                 unit="mm/s"
                 onChange={(v) =>
                   patch({ retractionSpeedMmS: { ...profile.retractionSpeedMmS, current: v } })
+                }
+                onCommit={(v) =>
+                  commitField("retractionSpeedMmS", v, profile.retractionSpeedMmS.default)
                 }
               />
               {profile.chamberTempC.applicable && (
@@ -321,9 +363,11 @@ function FilamentPage() {
                   onChange={(v) =>
                     patch({ chamberTempC: { ...profile.chamberTempC, current: v } })
                   }
+                  onCommit={(v) => commitField("chamberTempC", v, profile.chamberTempC.default)}
                 />
               )}
             </div>
+
 
             <div className="space-y-1.5">
               <Label htmlFor="notes" className="text-sm font-medium text-card-foreground">

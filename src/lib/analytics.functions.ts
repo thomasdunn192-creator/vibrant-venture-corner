@@ -63,7 +63,10 @@ export interface UsageMetrics {
   byPrinter: CountRow[];
   byFilament: CountRow[];
   byTopic: CountRow[];
+  byEditedField: CountRow[];
   chatMessages: number;
+  resets: number;
+  resetAlls: number;
   recent: RecentEvent[];
 }
 
@@ -102,7 +105,10 @@ export const getUsageMetrics = createServerFn({ method: "POST" })
     const perPrinter = new Map<string, number>();
     const perFilament = new Map<string, number>();
     const perTopic = new Map<string, number>();
+    const perEditedField = new Map<string, number>();
     let chatMessages = 0;
+    let resets = 0;
+    let resetAlls = 0;
 
     for (const row of events) {
       if (row.visitor_id) visitors.add(row.visitor_id);
@@ -117,6 +123,17 @@ export const getUsageMetrics = createServerFn({ method: "POST" })
         const detail = row.detail as { topic?: string } | null;
         if (detail?.topic) bump(perTopic, detail.topic);
       }
+      if (row.event_name === "filament_field_edited") {
+        const detail = row.detail as { field?: string } | null;
+        if (detail?.field) {
+          bump(
+            perEditedField,
+            `${row.printer_id ?? "unknown"} · ${row.filament_type ?? "unknown"} · ${detail.field}`,
+          );
+        }
+      }
+      if (row.event_name === "filament_reset") resets += 1;
+      if (row.event_name === "filament_reset_all") resetAlls += 1;
     }
 
     return {
@@ -129,7 +146,10 @@ export const getUsageMetrics = createServerFn({ method: "POST" })
       byPrinter: sortDesc(perPrinter),
       byFilament: sortDesc(perFilament),
       byTopic: sortDesc(perTopic),
+      byEditedField: sortDesc(perEditedField),
       chatMessages,
+      resets,
+      resetAlls,
       recent: events.slice(0, 30).map((row) => ({
         id: row.id,
         eventName: row.event_name,
