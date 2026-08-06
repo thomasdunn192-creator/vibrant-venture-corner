@@ -125,10 +125,13 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AppSettingsProvider>
+          <ChatSessionProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster />
+            <Outlet />
+            <Toaster />
+          </ChatSessionProvider>
         </AppSettingsProvider>
+
       </ThemeProvider>
     </QueryClientProvider>
   );
