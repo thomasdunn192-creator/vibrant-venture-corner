@@ -148,6 +148,15 @@ function AdminPage() {
                 {r.label}
               </Button>
             ))}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => data && downloadCsv(data, range)}
+              disabled={!data}
+              aria-label="Download CSV"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => void refetch()} aria-label="Refresh">
               <RefreshCw className={isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
             </Button>
