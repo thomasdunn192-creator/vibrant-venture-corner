@@ -270,6 +270,8 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<"uploading" | "analyzing">("analyzing");
+
   const [error, setError] = useState<string | null>(null);
   const [savedIndexes, setSavedIndexes] = useState<number[]>([]);
   const [guestNotifiedIndex, setGuestNotifiedIndex] = useState<number | null>(null);
@@ -314,6 +316,7 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
         },
       ]);
       setLoading(true);
+      setStatus(attached ? "uploading" : "analyzing");
       track({
         eventName: "chat_message_sent",
         printerId: current.selectedPrinterId,
@@ -334,7 +337,9 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
           } catch {
             // Storing the photo is best-effort; the AI still gets it this turn.
           }
+          setStatus("analyzing");
         }
+
         const profile = getProfile(current, current.selectedPrinterId, current.selectedFilamentType);
         const result = await chat({
           data: {
@@ -496,7 +501,7 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
                 <Bot className="h-4 w-4" />
               </div>
               <div className="rounded-2xl rounded-tl-none bg-muted px-4 py-2 text-sm text-muted-foreground">
-                Thinking…
+                {status === "uploading" ? "Uploading photo…" : "Analyzing…"}
               </div>
             </div>
           )}
