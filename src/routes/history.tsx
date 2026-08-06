@@ -251,3 +251,53 @@ function EntryCard({
     </Card>
   );
 }
+
+/** Saved chat photos live in a private bucket, so we sign short-lived view URLs. */
+function EntryPhotos({ paths }: { paths: string[] }) {
+  const [urls, setUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (paths.length === 0) {
+      setUrls([]);
+      return;
+    }
+    let active = true;
+    void (async () => {
+      const { data } = await supabase.storage
+        .from("chat-photos")
+        .createSignedUrls(paths, 60 * 60);
+      if (!active) return;
+      setUrls((data ?? []).map((row) => row.signedUrl).filter(Boolean) as string[]);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [paths.join(",")]);
+
+  if (paths.length === 0) return null;
+
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-semibold text-muted-foreground">Photos</span>
+      <div className="flex flex-wrap gap-2">
+        {urls.length === 0
+          ? paths.map((path) => (
+              <div
+                key={path}
+                className="h-20 w-20 animate-pulse rounded-lg border border-border bg-muted"
+              />
+            ))
+          : urls.map((url) => (
+              <a key={url} href={url} target="_blank" rel="noreferrer">
+                <img
+                  src={url}
+                  alt="Photo saved with this troubleshooting entry"
+                  loading="lazy"
+                  className="h-20 w-20 rounded-lg border border-border object-cover"
+                />
+              </a>
+            ))}
+      </div>
+    </div>
+  );
+}
