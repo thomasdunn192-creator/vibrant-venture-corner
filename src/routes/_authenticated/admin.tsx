@@ -145,6 +145,12 @@ function AdminPage() {
                 rows={data.byTopic}
               />
               <BreakdownCard
+                title="Most edited defaults"
+                description="Printer · filament · field changed away from default"
+                rows={data.byEditedField}
+              />
+
+              <BreakdownCard
                 title="Activity by day"
                 description="Events per day"
                 rows={data.eventsPerDay}
