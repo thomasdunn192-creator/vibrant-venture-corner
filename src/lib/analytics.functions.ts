@@ -63,7 +63,10 @@ export interface UsageMetrics {
   byPrinter: CountRow[];
   byFilament: CountRow[];
   byTopic: CountRow[];
+  byEditedField: CountRow[];
   chatMessages: number;
+  resets: number;
+  resetAlls: number;
   recent: RecentEvent[];
 }
 
