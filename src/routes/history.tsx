@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { supabase } from "@/integrations/supabase/client";
+
 import { Bot, History as HistoryIcon, MessageSquareText, Sparkles, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
