@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateText } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai.server";
-import { MAX_MESSAGE_LENGTH } from "./ai-limits";
+import { MAX_IMAGE_DATA_URL_LENGTH, MAX_MESSAGE_LENGTH } from "./ai-limits";
 import type { FilamentProfile } from "./filaments";
 import type { PrinterId } from "./printers";
 
@@ -30,6 +30,13 @@ const chatInputSchema = z.object({
     }),
   ).max(5),
   topic: z.string().optional(),
+  imageDataUrl: z
+    .string()
+    .max(MAX_IMAGE_DATA_URL_LENGTH)
+    .refine((v) => /^data:image\/(jpe?g|png|webp|heic|heif);base64,/i.test(v), {
+      message: "Unsupported image format.",
+    })
+    .optional(),
 });
 
 export const chatWithAssistant = createServerFn({ method: "POST" })
@@ -47,12 +54,28 @@ export const chatWithAssistant = createServerFn({ method: "POST" })
       data.filamentType,
       data.profile as unknown as FilamentProfile,
       data.topic,
+      Boolean(data.imageDataUrl),
     );
+
+    const chatMessages = data.messages.filter((m) => m.role !== "system");
+    const modelMessages = chatMessages.map((message, index) => {
+      const isLastUser = index === chatMessages.length - 1 && message.role === "user";
+      if (!isLastUser || !data.imageDataUrl) {
+        return { role: message.role, content: message.content } as const;
+      }
+      return {
+        role: "user" as const,
+        content: [
+          { type: "text" as const, text: message.content },
+          { type: "image" as const, image: new URL(data.imageDataUrl) },
+        ],
+      };
+    });
 
     const result = await generateText({
       model: provider("google/gemini-2.5-flash"),
       system: context,
-      messages: data.messages.filter((m) => m.role !== "system"),
+      messages: modelMessages,
       temperature: 0.6,
     });
 
@@ -64,6 +87,7 @@ function buildSystemContext(
   filamentType: string,
   profile: FilamentProfile,
   topic?: string,
+  hasPhoto?: boolean,
 ): string {
   const chamberInfo = profile.chamberTempC.applicable
     ? `Chamber temp: ${profile.chamberTempC.current}°C`
@@ -85,6 +109,15 @@ function buildSystemContext(
     "- If the user wants to apply a setting change, you can describe it clearly; the app will provide an 'Apply' button when it detects a specific setting recommendation.",
     "- For troubleshooting, list likely causes from most to least probable and give numbered fix steps.",
     "- Keep answers practical for desktop FDM 3D printers.",
+    hasPhoto
+      ? [
+          "",
+          "The user attached a photo of their print. Analyse it visually before answering:",
+          "- Look for common FDM defects: stringing/oozing, warping or curled corners, layer shifting/misalignment, poor first-layer adhesion, under-extrusion (gaps, thin walls, weak layer bonding), over-extrusion (blobs, bulging walls, elephant foot), ringing/ghosting, spaghetti/failed detachment, and surface blemishes or zits.",
+          "- Say what you can actually see in the photo, and say so plainly if the image is too blurry or cropped to judge.",
+          `- Tie your diagnosis to their specific hardware and material: the ${printerId} running ${filamentType} at the current settings above, and recommend concrete setting or mechanical changes from those values.`,
+        ].join("\n")
+      : "",
   ]
     .filter(Boolean)
     .join("\n");
