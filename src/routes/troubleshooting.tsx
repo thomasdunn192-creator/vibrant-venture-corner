@@ -270,6 +270,8 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<"uploading" | "analyzing">("analyzing");
+
   const [error, setError] = useState<string | null>(null);
   const [savedIndexes, setSavedIndexes] = useState<number[]>([]);
   const [guestNotifiedIndex, setGuestNotifiedIndex] = useState<number | null>(null);
