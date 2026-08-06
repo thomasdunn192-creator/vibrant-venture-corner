@@ -60,6 +60,59 @@ const RANGES = [
   { value: "all", label: "All time" },
 ] as const;
 
+function buildCsv(metrics: UsageMetrics, range: string): string {
+  const rows: string[] = [];
+  rows.push(`PrintOps usage metrics — ${range}`);
+  rows.push("");
+
+  rows.push(`Summary`);
+  rows.push(`Events,${metrics.totalEvents}`);
+  rows.push(`Unique visitors,${metrics.uniqueVisitors}`);
+  rows.push(`Signed-in users,${metrics.signedInUsers}`);
+  rows.push(`AI chat messages,${metrics.chatMessages}`);
+  rows.push(`Filament resets,${metrics.resets}`);
+  rows.push(`Printer-wide resets,${metrics.resetAlls}`);
+  rows.push("");
+
+  rows.push(`AI token usage`);
+  rows.push(`Today,${metrics.tokens.today},${estimateCostUsd(metrics.tokens.today)}`);
+  rows.push(`This week,${metrics.tokens.week},${estimateCostUsd(metrics.tokens.week)}`);
+  rows.push(`All time,${metrics.tokens.allTime},${estimateCostUsd(metrics.tokens.allTime)}`);
+  rows.push("");
+
+  const section = (title: string, data: CountRow[]) => {
+    rows.push(title);
+    rows.push("Label,Count");
+    for (const row of data) rows.push(`"${row.label}",${row.count}`);
+    rows.push("");
+  };
+
+  section("Page views", metrics.byPage);
+  section("Events", metrics.byEvent);
+  section("Printers", metrics.byPrinter);
+  section("Filaments", metrics.byFilament);
+  section("Troubleshooting topics", metrics.byTopic);
+  section("Most edited defaults", metrics.byEditedField);
+  section("Activity by day", metrics.eventsPerDay);
+
+  return rows.join("\n");
+}
+
+function downloadCsv(metrics: UsageMetrics, range: string) {
+  const csv = buildCsv(metrics, range);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `printops-metrics-${range}-${date}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+
 function AdminPage() {
   const [range, setRange] = useState<(typeof RANGES)[number]["value"]>("7d");
   const fetchMetrics = useServerFn(getUsageMetrics);
