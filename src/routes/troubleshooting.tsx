@@ -314,6 +314,7 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
         },
       ]);
       setLoading(true);
+      setStatus(attached ? "uploading" : "analyzing");
       track({
         eventName: "chat_message_sent",
         printerId: current.selectedPrinterId,
@@ -334,7 +335,9 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
           } catch {
             // Storing the photo is best-effort; the AI still gets it this turn.
           }
+          setStatus("analyzing");
         }
+
         const profile = getProfile(current, current.selectedPrinterId, current.selectedFilamentType);
         const result = await chat({
           data: {
