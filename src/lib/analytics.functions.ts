@@ -53,6 +53,12 @@ export interface RecentEvent {
   signedIn: boolean;
 }
 
+export interface TokenTotals {
+  today: number;
+  week: number;
+  allTime: number;
+}
+
 export interface UsageMetrics {
   totalEvents: number;
   uniqueVisitors: number;
@@ -67,6 +73,9 @@ export interface UsageMetrics {
   chatMessages: number;
   resets: number;
   resetAlls: number;
+  tokens: TokenTotals;
+  chatVolumeByDay: CountRow[];
+  chatVolumeByWeek: CountRow[];
   recent: RecentEvent[];
 }
 
@@ -136,7 +145,40 @@ export const getUsageMetrics = createServerFn({ method: "POST" })
       if (row.event_name === "filament_reset_all") resetAlls += 1;
     }
 
+    // Token usage and chat volume trends are deliberately independent of the
+    // selected range: cost totals need today / this week / all-time.
+    const { data: chatRows } = await context.supabase
+      .from("usage_events")
+      .select("event_name, detail, created_at")
+      .in("event_name", ["chat_response_received", "chat_message_sent"])
+      .order("created_at", { ascending: false })
+      .limit(10000);
+
+    const now = Date.now();
+    const dayAgo = now - 24 * 60 * 60 * 1000;
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const tokens: TokenTotals = { today: 0, week: 0, allTime: 0 };
+    const chatPerDay = new Map<string, number>();
+    const chatPerWeek = new Map<string, number>();
+
+    for (const row of chatRows ?? []) {
+      const ts = new Date(row.created_at ?? 0).getTime();
+      if (row.event_name === "chat_response_received") {
+        const detail = row.detail as { totalTokens?: number } | null;
+        const total = Number(detail?.totalTokens ?? 0) || 0;
+        tokens.allTime += total;
+        if (ts >= weekAgo) tokens.week += total;
+        if (ts >= dayAgo) tokens.today += total;
+      } else {
+        bump(chatPerDay, (row.created_at ?? "").slice(0, 10));
+        bump(chatPerWeek, weekLabel(row.created_at ?? ""));
+      }
+    }
+
     return {
+      tokens,
+      chatVolumeByDay: toRows(chatPerDay).sort((a, b) => b.label.localeCompare(a.label)).slice(0, 14),
+      chatVolumeByWeek: toRows(chatPerWeek).sort((a, b) => b.label.localeCompare(a.label)).slice(0, 8),
       totalEvents: events.length,
       uniqueVisitors: visitors.size,
       signedInUsers: users.size,
@@ -166,6 +208,23 @@ function rangeStart(range: "24h" | "7d" | "30d" | "all"): string | null {
   if (range === "all") return null;
   const hours = range === "24h" ? 24 : range === "7d" ? 24 * 7 : 24 * 30;
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+}
+
+/** ISO-ish week bucket label, e.g. "2026-W32". */
+function weekLabel(createdAt: string): string {
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return "";
+  const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = (target.getUTCDay() + 6) % 7;
+  target.setUTCDate(target.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const week =
+    1 +
+    Math.round(
+      (target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000) -
+        ((firstThursday.getUTCDay() + 6) % 7 > 3 ? 1 : 0),
+    );
+  return `${target.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
 function bump(map: Map<string, number>, key: string) {

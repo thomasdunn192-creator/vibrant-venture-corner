@@ -363,6 +363,16 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
           },
         });
         setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
+        track({
+          eventName: "chat_response_received",
+          printerId: current.selectedPrinterId,
+          filamentType: current.selectedFilamentType,
+          detail: {
+            promptTokens: result.usage?.promptTokens ?? 0,
+            completionTokens: result.usage?.completionTokens ?? 0,
+            totalTokens: result.usage?.totalTokens ?? 0,
+          },
+        });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
       } finally {

@@ -79,7 +79,20 @@ export const chatWithAssistant = createServerFn({ method: "POST" })
       temperature: 0.6,
     });
 
-    return { reply: result.text };
+    const usage = result.usage as
+      | { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+      | undefined;
+    const promptTokens = usage?.inputTokens ?? 0;
+    const completionTokens = usage?.outputTokens ?? 0;
+
+    return {
+      reply: result.text,
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens: usage?.totalTokens ?? promptTokens + completionTokens,
+      },
+    };
   });
 
 function buildSystemContext(
