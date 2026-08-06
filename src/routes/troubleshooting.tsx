@@ -321,6 +321,8 @@ function ChatPanel({ pending, signedIn, onSaveExchange }: ChatPanelProps) {
         eventName: "chat_message_sent",
         printerId: current.selectedPrinterId,
         filamentType: current.selectedFilamentType,
+        // Category only — never the raw question text.
+        detail: { category: categorizeChatQuestion(userText) },
       });
 
       try {
